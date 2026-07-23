@@ -11,7 +11,7 @@ export const initialOrbitState: OrbitState = {
     happiness: 90,
     energy: 85,
     status_message: "Sprout is happy and waiting for your first shared memory!",
-    selected_skin: "dark_hoodie",
+    selected_skin: "sprout",
   },
   users: {
     user_a: {
@@ -33,7 +33,6 @@ export const initialOrbitState: OrbitState = {
   intimacy_zone: {
     active_encrypted_items: [],
   },
-  chat_history_update: undefined,
   chat_history_log: [],
   narrative_response: "Welcome to Orbit! Your private shared space is ready. Start by sending messages, writing letters, or uploading photo memories together.",
 };

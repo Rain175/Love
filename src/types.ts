@@ -102,7 +102,7 @@ export interface OrbitState {
   intimacy_zone: {
     active_encrypted_items: EncryptedIntimacyItem[];
   };
-  chat_history_update: ChatMessageUpdate;
+  chat_history_update?: ChatMessageUpdate;
   chat_history_log?: ChatMessageUpdate[];
   narrative_response: string;
 }

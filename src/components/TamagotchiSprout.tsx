@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { TamagotchiState, UserRole, UserProfile, MinigameType } from "../types";
 import { Utensils, Smile, Zap, Heart, Sparkles, Gamepad2, Moon, Edit3, Check, HeartHandshake, UserCheck, Shirt, Palette, ShieldCheck } from "lucide-react";
-import { DARK_HOODIE_BASE64, KISS_HOODIE_BASE64 } from "../assets/skins/skinData";
+import darkHoodieImg from "../assets/skins/dark_hoodie.jpg";
+import kissHoodieImg from "../assets/skins/kiss_hoodie.jpg";
 
 interface TamagotchiSproutProps {
   tamagotchi: TamagotchiState;
@@ -38,7 +39,8 @@ const SKINS_CATALOG = [
     name: "Chibi Dark Hoodie ✨",
     tagline: "Custom Sticker Skin",
     description: "Cute dark skin tone chibi character wearing a charcoal hoodie & navy jeans.",
-    imageUrl: DARK_HOODIE_BASE64,
+    imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+    fallbackUrl: "/skins/dark_hoodie.jpg",
     type: "image",
   },
   {
@@ -46,7 +48,8 @@ const SKINS_CATALOG = [
     name: "Chibi KISS Rock Hoodie 🎸",
     tagline: "Custom Sticker Skin",
     description: "Tan skin tone chibi character with fluffy black hair & KISS rock band hoodie.",
-    imageUrl: KISS_HOODIE_BASE64,
+    imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+    fallbackUrl: "/skins/kiss_hoodie.jpg",
     type: "image",
   },
 ];
@@ -67,6 +70,7 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
   const [isEditingMood, setIsEditingMood] = useState(false);
   const [selectedMood, setSelectedMood] = useState("");
   const [customStatusInput, setCustomStatusInput] = useState("");
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const me = activeUser === "User_A" ? userA : userB;
   const partner = activeUser === "User_A" ? userB : userA;
@@ -268,9 +272,11 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
               {currentSkinId === "dark_hoodie" || currentSkinId === "kiss_hoodie" ? (
                 <div className={`relative w-32 h-32 rounded-3xl overflow-hidden border-2 border-pink-400/60 shadow-[0_0_25px_rgba(236,72,153,0.4)] group-hover:scale-105 transition-all duration-300 bg-black/60 ${actionEffect ? "animate-bounce" : ""}`}>
                   <img
-                    src={currentSkinId === "dark_hoodie" ? DARK_HOODIE_BASE64 : KISS_HOODIE_BASE64}
+                    src={imageErrors[currentSkinId] ? (currentSkinId === "dark_hoodie" ? "/skins/dark_hoodie.jpg" : "/skins/kiss_hoodie.jpg") : (currentSkinId === "dark_hoodie" ? darkHoodieImg : kissHoodieImg)}
                     alt="Chibi Partner Skin"
                     className="w-full h-full object-contain p-1"
+                    onError={() => setImageErrors((prev) => ({ ...prev, [currentSkinId]: true }))}
+                    referrerPolicy="no-referrer"
                   />
                   <div className="absolute top-1.5 right-1.5 bg-pink-500/80 text-white font-bold text-[9px] px-2 py-0.5 rounded-full border border-pink-300 flex items-center gap-1 shadow">
                     <Sparkles className="w-2.5 h-2.5" /> Custom Skin
@@ -488,9 +494,11 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
                     <div className="aspect-square w-full rounded-xl bg-black/60 border border-white/10 flex items-center justify-center p-2 overflow-hidden relative">
                       {skin.type === "image" ? (
                         <img
-                          src={skin.imageUrl}
+                          src={imageErrors[skin.id] ? skin.fallbackUrl : skin.imageUrl}
                           alt={skin.name}
                           className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                          onError={() => setImageErrors((prev) => ({ ...prev, [skin.id]: true }))}
+                          referrerPolicy="no-referrer"
                         />
                       ) : (
                         <div className="w-24 h-24 flex items-center justify-center">

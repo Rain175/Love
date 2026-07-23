@@ -8,9 +8,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, setLogLevel } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import firebaseConfigJson from "../../firebase-applet-config.json";
+
+setLogLevel("error");
 
 // Dynamic configuration prioritizing Vite environment variables (for Vercel deployment)
 // with fallback to local JSON config
@@ -73,4 +75,22 @@ export const logoutUser = async () => {
 };
 
 export { signInWithEmailAndPassword, createUserWithEmailAndPassword };
+
+export function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore) as unknown as T;
+  }
+  const sanitized: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    const val = (obj as Record<string, any>)[key];
+    if (val !== undefined) {
+      sanitized[key] = sanitizeForFirestore(val);
+    }
+  }
+  return sanitized as T;
+}
+
 

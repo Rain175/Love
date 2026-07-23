@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc, getDoc, deleteDoc } from "firebase/firestore";
-import { auth, db } from "./lib/firebase";
+import { auth, db, sanitizeForFirestore } from "./lib/firebase";
 import { OrbitState, UserRole, ActionPayload, MinigameType } from "./types";
 import { initialOrbitState } from "./data/initialState";
 import { calculateCountdown, TARGET_REUNION_DATE } from "./utils/countdown";
@@ -125,7 +125,7 @@ export default function App() {
             timestamp: new Date().toISOString(),
             countdown: calculateCountdown(TARGET_REUNION_DATE),
           };
-          setDoc(roomRef, newRoomState);
+          setDoc(roomRef, sanitizeForFirestore(newRoomState));
           setState(newRoomState);
         }
       },
@@ -143,7 +143,7 @@ export default function App() {
       try {
         await setDoc(
           doc(db, "orbit_user_rooms", user.uid),
-          { roomCode: code, updatedAt: new Date().toISOString() },
+          sanitizeForFirestore({ roomCode: code, updatedAt: new Date().toISOString() }),
           { merge: true }
         );
       } catch (err) {
@@ -183,7 +183,7 @@ export default function App() {
     // Attempt sync with Firebase Firestore
     try {
       const roomRef = doc(db, "orbit_rooms", code);
-      await setDoc(roomRef, newRoomState);
+      await setDoc(roomRef, sanitizeForFirestore(newRoomState));
       await linkUserToRoom(code);
     } catch (firestoreErr) {
       console.warn("Firestore room save notice (using local storage fallback):", firestoreErr);
@@ -222,7 +222,7 @@ export default function App() {
         };
 
         try {
-          await setDoc(roomRef, { ...roomData, users: updatedUsers }, { merge: true });
+          await setDoc(roomRef, sanitizeForFirestore({ ...roomData, users: updatedUsers }), { merge: true });
         } catch (e) {
           console.warn("Could not update user_b info on Firestore:", e);
         }
@@ -272,7 +272,7 @@ export default function App() {
       localStorage.setItem(`orbit_room_data_${roomCode}`, JSON.stringify(updatedState));
       try {
         const roomRef = doc(db, "orbit_rooms", roomCode);
-        await setDoc(roomRef, updatedState, { merge: true });
+        await setDoc(roomRef, sanitizeForFirestore(updatedState), { merge: true });
       } catch (err) {
         console.warn("Firestore sync notice (local backup retained):", err);
       }
