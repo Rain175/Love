@@ -1,0 +1,6 @@
+{
+  "name": "Orbit - Couple's App Engine",
+  "description": "Private two-player long-distance couple's app with shared Tamagotchi companion Sprout, reunion countdown, collaborative scrapbook, open-when letters, encrypted intimacy zone, and mood sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
