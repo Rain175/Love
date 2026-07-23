@@ -11,7 +11,7 @@ export const initialOrbitState: OrbitState = {
     happiness: 90,
     energy: 85,
     status_message: "Sprout is happy and waiting for your first shared memory!",
-    selected_skin: "sprout",
+    selected_skin: "dark_hoodie",
   },
   users: {
     user_a: {
