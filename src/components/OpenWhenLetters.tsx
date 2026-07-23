@@ -67,54 +67,73 @@ export const OpenWhenLetters: React.FC<OpenWhenLettersProps> = ({
       </div>
 
       {/* Envelope Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {letters.map((letter) => (
-          <div
-            key={letter.id}
-            onClick={() => handleUnlockAndOpen(letter)}
-            className={`group relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-lg ${
-              letter.is_unlocked
-                ? "bg-black/40 border-white/10 hover:border-pink-400/80 hover:shadow-pink-500/10"
-                : "bg-black/30 border-white/5 hover:border-white/20 hover:bg-black/40"
-            }`}
-          >
-            {/* Top Bar with Lock Icon */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
-                #{letter.condition}
-              </span>
-              {letter.is_unlocked ? (
-                <div className="flex items-center gap-1 text-emerald-300 text-xs font-semibold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                  <Unlock className="w-3 h-3" />
-                  <span>Unlocked</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-amber-300 text-xs font-semibold bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  <span>Locked</span>
-                </div>
-              )}
-            </div>
-
-            {/* Title */}
-            <div className="space-y-1">
-              <h4 className="font-bold text-sm text-white group-hover:text-pink-300 transition-colors flex items-center gap-2">
-                <Mail className="w-4 h-4 text-pink-400 shrink-0" />
-                <span>{letter.title}</span>
-              </h4>
-              <p className="text-[11px] text-slate-400">
-                Author: <strong className="text-slate-300">{letter.author || "Partner"}</strong>
-              </p>
-            </div>
-
-            {/* Bottom Action Hint */}
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-pink-300 font-medium">
-              <span>{letter.is_unlocked ? "Read Letter" : "Break Wax Seal & Read"}</span>
-              <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
-            </div>
+      {letters.length === 0 ? (
+        <div className="text-center py-12 bg-black/20 rounded-3xl border border-dashed border-white/10 space-y-3 p-6">
+          <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-400 mx-auto flex items-center justify-center">
+            <Mail className="w-6 h-6" />
           </div>
-        ))}
-      </div>
+          <div>
+            <h4 className="font-bold text-sm text-white">No "Open When..." Letters Yet</h4>
+            <p className="text-xs text-slate-400 mt-1">Write your partner a heartfelt letter for when they miss you, can't sleep, or need a smile.</p>
+          </div>
+          <button
+            onClick={() => setIsWriteModalOpen(true)}
+            className="px-4 py-2 bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 font-semibold text-xs rounded-xl border border-pink-500/30 inline-flex items-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Write First Letter</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {letters.map((letter) => (
+            <div
+              key={letter.id}
+              onClick={() => handleUnlockAndOpen(letter)}
+              className={`group relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-lg ${
+                letter.is_unlocked
+                  ? "bg-black/40 border-white/10 hover:border-pink-400/80 hover:shadow-pink-500/10"
+                  : "bg-black/30 border-white/5 hover:border-white/20 hover:bg-black/40"
+              }`}
+            >
+              {/* Top Bar with Lock Icon */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+                  #{letter.condition}
+                </span>
+                {letter.is_unlocked ? (
+                  <div className="flex items-center gap-1 text-emerald-300 text-xs font-semibold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    <Unlock className="w-3 h-3" />
+                    <span>Unlocked</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-amber-300 text-xs font-semibold bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                    <Lock className="w-3 h-3" />
+                    <span>Locked</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Title */}
+              <div className="space-y-1">
+                <h4 className="font-bold text-sm text-white group-hover:text-pink-300 transition-colors flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-pink-400 shrink-0" />
+                  <span>{letter.title}</span>
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Author: <strong className="text-slate-300">{letter.author || "Partner"}</strong>
+                </p>
+              </div>
+
+              {/* Bottom Action Hint */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-pink-300 font-medium">
+                <span>{letter.is_unlocked ? "Read Letter" : "Break Wax Seal & Read"}</span>
+                <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Letter Reading Modal */}
       {selectedLetter && (

@@ -46,7 +46,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = uploadedPreview || newPhotoUrl.trim() || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80";
+    const finalImage = uploadedPreview || newPhotoUrl.trim() || "";
     onRequestPhotoBooth(finalImage, newCaption.trim() || undefined);
     setNewPhotoUrl("");
     setNewCaption("");
@@ -56,7 +56,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   const handleCompleteSubmit = (requestId: string, e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = responseUploadedPreview || responsePhotoUrl.trim() || "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=500&q=80";
+    const finalImage = responseUploadedPreview || responsePhotoUrl.trim() || "";
     onCompletePhotoBooth(requestId, finalImage);
     setCompletingRequestId(null);
     setResponsePhotoUrl("");

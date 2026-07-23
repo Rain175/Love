@@ -377,7 +377,7 @@ export default function App() {
         author: activeUser,
         caption: caption || payload.action_input || "New Memory",
         timestamp: new Date().toISOString(),
-        image_url: image_url || "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80",
+        image_url: image_url || "",
         tags: tags || ["memory"],
       };
       nextState.scrapbook = [newItem, ...(nextState.scrapbook || [])];
@@ -447,7 +447,7 @@ export default function App() {
         is_viewed: false,
         title: title || "Encrypted Memory",
         secret_message: secret_message || "",
-        image_url: image_url || "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80",
+        image_url: image_url || "",
         created_at: new Date().toISOString(),
       });
       nextState.users[userKey].last_action = "Uploaded E2EE memory";

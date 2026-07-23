@@ -39,7 +39,7 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const finalImage = uploadedFilePreview || customPhotoInput.trim() || "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80";
+    const finalImage = uploadedFilePreview || customPhotoInput.trim() || "";
 
     onAddIntimacyItem(newTitle.trim(), secretMessage.trim(), finalImage);
     setNewTitle("");
@@ -87,7 +87,25 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
 
       {/* Encrypted Items List */}
       <div className="space-y-3">
-        {items.map((item) => (
+        {items.length === 0 ? (
+          <div className="text-center py-12 bg-black/20 rounded-3xl border border-dashed border-white/10 space-y-3 p-6">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 mx-auto flex items-center justify-center">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-white">Encrypted Vault Empty</h4>
+              <p className="text-xs text-slate-400 mt-1">Upload private secret photos or encrypted messages for your partner to unlock.</p>
+            </div>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-semibold text-xs rounded-xl border border-purple-500/30 inline-flex items-center gap-1.5 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add First Secret Memory</span>
+            </button>
+          </div>
+        ) : (
+          items.map((item) => (
           <div
             key={item.id}
             className="p-4 rounded-2xl bg-black/40 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-purple-400/30 transition-all"
@@ -154,7 +172,8 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
               </button>
             </div>
           </div>
-        ))}
+        ))
+      )}
       </div>
 
       {/* Add Intimacy Item Modal */}

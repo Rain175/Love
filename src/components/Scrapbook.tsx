@@ -9,29 +9,6 @@ interface ScrapbookProps {
   isLoading: boolean;
 }
 
-const DEFAULT_SAMPLE_PHOTOS = [
-  {
-    title: "Sunset Date",
-    url: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80",
-    tags: ["sunset", "date_night"],
-  },
-  {
-    title: "Coffee & Pastries",
-    url: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80",
-    tags: ["coffee", "food"],
-  },
-  {
-    title: "Late Night Video Call",
-    url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
-    tags: ["videocall", "cozy"],
-  },
-  {
-    title: "Reunion Hug Memory",
-    url: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=600&q=80",
-    tags: ["reunion", "hugs"],
-  },
-];
-
 export const Scrapbook: React.FC<ScrapbookProps> = ({
   items,
   activeUser,
@@ -40,7 +17,6 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [caption, setCaption] = useState("");
-  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(DEFAULT_SAMPLE_PHOTOS[0].url);
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
@@ -62,7 +38,6 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
       reader.onloadend = () => {
         const result = reader.result as string;
         setUploadedFilePreview(result);
-        setSelectedPhotoUrl(result);
       };
       reader.readAsDataURL(file);
     }
@@ -72,7 +47,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     e.preventDefault();
     if (!caption.trim()) return;
 
-    const finalUrl = uploadedFilePreview || customPhotoInput.trim() || selectedPhotoUrl;
+    const finalUrl = uploadedFilePreview || customPhotoInput.trim() || "";
     const tagsArray = tagInput
       .split(",")
       .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
@@ -138,58 +113,80 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
       )}
 
       {/* Photo Memory Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {filteredItems.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => setViewingItem(item)}
-            className="group relative bg-black/40 rounded-2xl overflow-hidden border border-white/10 hover:border-sky-400/50 transition-all cursor-pointer shadow-lg hover:shadow-sky-500/10 flex flex-col justify-between"
-          >
-            {/* Card Image */}
-            <div className="aspect-video w-full overflow-hidden bg-black/60 relative">
-              <img
-                src={
-                  item.image_url ||
-                  "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80"
-                }
-                alt={item.caption}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute top-2.5 right-2.5">
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-md ${
-                    item.author === "User_A"
-                      ? "bg-pink-500/80 text-white border-pink-400"
-                      : "bg-indigo-500/80 text-white border-indigo-400"
-                  }`}
-                >
-                  {item.author}
-                </span>
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="p-4 space-y-2">
-              <p className="text-xs font-medium text-slate-200 line-clamp-2 leading-snug">
-                {item.caption}
-              </p>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/10">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>{new Date(item.timestamp).toLocaleDateString()}</span>
-                </span>
-                {item.tags && item.tags.length > 0 && (
-                  <span className="text-sky-300 font-mono truncate max-w-[120px]">
-                    #{item.tags[0]}
-                  </span>
-                )}
-              </div>
-            </div>
+      {filteredItems.length === 0 ? (
+        <div className="p-8 text-center bg-black/30 rounded-3xl border border-dashed border-white/10 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 mx-auto flex items-center justify-center">
+            <Image className="w-6 h-6" />
           </div>
-        ))}
-      </div>
+          <div>
+            <h4 className="font-bold text-sm text-white">No Photo Memories Yet</h4>
+            <p className="text-xs text-slate-400 mt-1">Upload a photo from your phone or device to save your first memory together.</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-semibold text-xs rounded-xl border border-sky-500/30 inline-flex items-center gap-1.5 transition-all"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload First Memory</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {filteredItems.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => setViewingItem(item)}
+              className="group relative bg-black/40 rounded-2xl overflow-hidden border border-white/10 hover:border-sky-400/50 transition-all cursor-pointer shadow-lg hover:shadow-sky-500/10 flex flex-col justify-between"
+            >
+              {/* Card Image */}
+              <div className="aspect-video w-full overflow-hidden bg-black/60 relative">
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.caption}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-950 text-sky-400">
+                    <Image className="w-8 h-8 opacity-50" />
+                  </div>
+                )}
+                <div className="absolute top-2.5 right-2.5">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-md ${
+                      item.author === "User_A"
+                        ? "bg-pink-500/80 text-white border-pink-400"
+                        : "bg-indigo-500/80 text-white border-indigo-400"
+                    }`}
+                  >
+                    {item.author}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card Content */}
+              <div className="p-4 space-y-2">
+                <p className="text-xs font-medium text-slate-200 line-clamp-2 leading-snug">
+                  {item.caption}
+                </p>
+
+                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/10">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                  </span>
+                  {item.tags && item.tags.length > 0 && (
+                    <span className="text-sky-300 font-mono truncate max-w-[120px]">
+                      #{item.tags[0]}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Memory Modal */}
       {isModalOpen && (
@@ -245,48 +242,18 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
               </div>
 
               {!uploadedFilePreview && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Or Choose Sample Photo
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEFAULT_SAMPLE_PHOTOS.map((p, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedPhotoUrl(p.url);
-                            setCustomPhotoInput("");
-                          }}
-                          className={`relative aspect-video rounded-xl overflow-hidden border transition-all ${
-                            selectedPhotoUrl === p.url && !customPhotoInput
-                              ? "ring-2 ring-sky-400 border-sky-400"
-                              : "border-white/10 opacity-70 hover:opacity-100"
-                          }`}
-                        >
-                          <img src={p.url} alt={p.title} className="w-full h-full object-cover" />
-                          <span className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-white">
-                            {p.title}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Or Custom Photo URL
-                    </label>
-                    <input
-                      type="url"
-                      value={customPhotoInput}
-                      onChange={(e) => setCustomPhotoInput(e.target.value)}
-                      placeholder="https://example.com/photo.jpg"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-                </>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Or Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={customPhotoInput}
+                    onChange={(e) => setCustomPhotoInput(e.target.value)}
+                    placeholder="https://example.com/photo.jpg"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
               )}
 
               <div>
