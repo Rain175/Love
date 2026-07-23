@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { TamagotchiState, UserRole, UserProfile, MinigameType } from "../types";
 import { Utensils, Smile, Zap, Heart, Sparkles, Gamepad2, Moon, Edit3, Check, HeartHandshake, UserCheck, Shirt, Palette, ShieldCheck } from "lucide-react";
+import darkHoodieImg from "../assets/skins/dark_hoodie.jpg";
+import kissHoodieImg from "../assets/skins/kiss_hoodie.jpg";
 
 interface TamagotchiSproutProps {
   tamagotchi: TamagotchiState;
@@ -37,7 +39,7 @@ const SKINS_CATALOG = [
     name: "Chibi Dark Hoodie ✨",
     tagline: "Custom Sticker Skin",
     description: "Cute dark skin tone chibi character wearing a charcoal hoodie & navy jeans.",
-    imageUrl: "/skins/dark_hoodie.jpg",
+    imageUrl: darkHoodieImg,
     type: "image",
   },
   {
@@ -45,7 +47,7 @@ const SKINS_CATALOG = [
     name: "Chibi KISS Rock Hoodie 🎸",
     tagline: "Custom Sticker Skin",
     description: "Tan skin tone chibi character with fluffy black hair & KISS rock band hoodie.",
-    imageUrl: "/skins/kiss_hoodie.jpg",
+    imageUrl: kissHoodieImg,
     type: "image",
   },
 ];
@@ -267,9 +269,9 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
               {currentSkinId === "dark_hoodie" || currentSkinId === "kiss_hoodie" ? (
                 <div className={`relative w-32 h-32 rounded-3xl overflow-hidden border-2 border-pink-400/60 shadow-[0_0_25px_rgba(236,72,153,0.4)] group-hover:scale-105 transition-all duration-300 bg-black/60 ${actionEffect ? "animate-bounce" : ""}`}>
                   <img
-                    src={currentSkinId === "dark_hoodie" ? "/skins/dark_hoodie.jpg" : "/skins/kiss_hoodie.jpg"}
+                    src={currentSkinId === "dark_hoodie" ? darkHoodieImg : kissHoodieImg}
                     alt="Chibi Partner Skin"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain p-1"
                   />
                   <div className="absolute top-1.5 right-1.5 bg-pink-500/80 text-white font-bold text-[9px] px-2 py-0.5 rounded-full border border-pink-300 flex items-center gap-1 shadow">
                     <Sparkles className="w-2.5 h-2.5" /> Custom Skin
