@@ -1,12 +1,11 @@
 {
-  "projectId": "spring-octagon-mcwq9",
-  "appId": "1:1077217519388:web:f725cd04eb9f32c5fcfcd9",
-  "apiKey": "AIzaSyDS_8h23r7tJsbJKyH0jglq04mBdbk__W4",
-  "authDomain": "spring-octagon-mcwq9.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-orbitcouplesappe-f70705a3-25d4-4809-a5fe-aa97b5b14337",
-  "storageBucket": "spring-octagon-mcwq9.firebasestorage.app",
-  "messagingSenderId": "1077217519388",
-  "measurementId": "",
-  "oAuthClientId": "1077217519388-5ahei8s4tcehmb7akvt65vi4c9kkiof1.apps.googleusercontent.com",
+  "projectId": "orbit-love-68a0a",
+  "appId": "1:173307680363:web:a244c2f161aad9d76b432e",
+  "apiKey": "AIzaSyDGkgBSeyjr_hQ3Qx8yEtnT3HVXOVhWRqw",
+  "authDomain": "orbit-love-68a0a.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "orbit-love-68a0a.firebasestorage.app",
+  "messagingSenderId": "173307680363",
+  "measurementId": "G-6XS8JXTVFH",
   "recaptchaSiteKey": ""
 }

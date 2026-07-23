@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
 // Dynamic configuration prioritizing Vite environment variables (for Vercel deployment)
@@ -22,12 +23,25 @@ const firebaseConfig = {
   storageBucket: (metaEnv.VITE_FIREBASE_STORAGE_BUCKET as string) || firebaseConfigJson?.storageBucket || "",
   messagingSenderId: (metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID as string) || firebaseConfigJson?.messagingSenderId || "",
   appId: (metaEnv.VITE_FIREBASE_APP_ID as string) || firebaseConfigJson?.appId || "",
+  measurementId: (metaEnv.VITE_FIREBASE_MEASUREMENT_ID as string) || firebaseConfigJson?.measurementId || "",
 };
 
 const databaseId = (metaEnv.VITE_FIRESTORE_DATABASE_ID as string) || firebaseConfigJson?.firestoreDatabaseId || "(default)";
 
 // Initialize Firebase App safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Analytics safely
+export let analytics: any = null;
+if (typeof window !== "undefined") {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  }).catch((err) => {
+    console.warn("Analytics not supported in this environment:", err);
+  });
+}
 
 // Initialize Services
 export const auth = getAuth(app);
