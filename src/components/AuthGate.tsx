@@ -115,17 +115,38 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onSuccess }) => {
             <p className="leading-relaxed">{errorMsg}</p>
 
             {unauthorizedDomain && (
-              <div className="pt-2 border-t border-rose-500/30 text-[11px] text-rose-100 space-y-1">
+              <div className="pt-2 border-t border-rose-500/30 text-[11px] text-rose-100 space-y-2">
                 <p className="font-semibold text-amber-300 flex items-center gap-1">
                   <Globe className="w-3.5 h-3.5" />
-                  <span>Vercel Deployment Domain Setup:</span>
+                  <span>Vercel Deployment Domain Authorization:</span>
                 </p>
-                <p className="text-slate-300">
-                  Add <code className="bg-black/50 px-1.5 py-0.5 rounded font-mono text-amber-300">{currentDomain}</code> to your Firebase Console under:
-                </p>
-                <p className="text-slate-300 font-mono text-[10px]">
-                  Firebase Console → Authentication → Settings → Authorized domains
-                </p>
+                <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-300 text-[10px]">Your Vercel domain:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentDomain);
+                        alert(`Copied "${currentDomain}" to clipboard!`);
+                      }}
+                      className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                    >
+                      <Globe className="w-3 h-3" />
+                      <span>Copy Domain</span>
+                    </button>
+                  </div>
+                  <code className="block bg-black/60 px-2 py-1 rounded font-mono text-amber-300 text-[11px] break-all select-all">
+                    {currentDomain}
+                  </code>
+                </div>
+                <div className="text-slate-300 space-y-1 text-[11px]">
+                  <p className="font-semibold text-slate-200">How to fix in 30 seconds:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-slate-300">
+                    <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-pink-300 underline font-semibold">Firebase Console</a> (Project: <strong className="text-white">orbit-love-68a0a</strong>)</li>
+                    <li>Click <strong className="text-white">Authentication</strong> → <strong className="text-white">Settings</strong> → <strong className="text-white">Authorized domains</strong></li>
+                    <li>Click <strong className="text-white">Add domain</strong> and paste <code className="text-amber-300 font-mono">{currentDomain}</code></li>
+                  </ol>
+                </div>
               </div>
             )}
           </div>

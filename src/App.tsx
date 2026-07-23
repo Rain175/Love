@@ -180,11 +180,18 @@ export default function App() {
       },
     };
 
-    const roomRef = doc(db, "orbit_rooms", code);
-    await setDoc(roomRef, newRoomState);
-    await linkUserToRoom(code);
+    // Attempt sync with Firebase Firestore
+    try {
+      const roomRef = doc(db, "orbit_rooms", code);
+      await setDoc(roomRef, newRoomState);
+      await linkUserToRoom(code);
+    } catch (firestoreErr) {
+      console.warn("Firestore room save notice (using local storage fallback):", firestoreErr);
+    }
 
+    // Always persist locally as well to ensure bulletproof operation
     localStorage.setItem("orbit_room_code", code);
+    localStorage.setItem(`orbit_room_data_${code}`, JSON.stringify(newRoomState));
     setRoomCode(code);
     setState(newRoomState);
     return code;
@@ -193,29 +200,53 @@ export default function App() {
   // Join Existing Room Handler
   const handleJoinRoom = async (code: string): Promise<boolean> => {
     const upperCode = code.toUpperCase();
-    const roomRef = doc(db, "orbit_rooms", upperCode);
-    const docSnap = await getDoc(roomRef);
+    try {
+      const roomRef = doc(db, "orbit_rooms", upperCode);
+      const docSnap = await getDoc(roomRef);
 
-    if (docSnap.exists()) {
-      await linkUserToRoom(upperCode);
-      localStorage.setItem("orbit_room_code", upperCode);
-      setRoomCode(upperCode);
-      setActiveUser("User_B");
+      if (docSnap.exists()) {
+        await linkUserToRoom(upperCode);
+        localStorage.setItem("orbit_room_code", upperCode);
+        setRoomCode(upperCode);
+        setActiveUser("User_B");
 
-      const roomData = docSnap.data() as OrbitState;
-      const updatedUsers = {
-        ...roomData.users,
-        user_b: {
-          ...roomData.users.user_b,
-          name: user?.displayName || user?.email?.split("@")[0] || roomData.users.user_b.name,
-          uid: user?.uid,
-          email: user?.email || undefined,
-        },
-      };
+        const roomData = docSnap.data() as OrbitState;
+        const updatedUsers = {
+          ...roomData.users,
+          user_b: {
+            ...roomData.users.user_b,
+            name: user?.displayName || user?.email?.split("@")[0] || roomData.users.user_b.name,
+            uid: user?.uid,
+            email: user?.email || undefined,
+          },
+        };
 
-      await setDoc(roomRef, { ...roomData, users: updatedUsers }, { merge: true });
-      return true;
+        try {
+          await setDoc(roomRef, { ...roomData, users: updatedUsers }, { merge: true });
+        } catch (e) {
+          console.warn("Could not update user_b info on Firestore:", e);
+        }
+        return true;
+      }
+    } catch (err) {
+      console.warn("Error fetching room from Firestore, checking local backup:", err);
     }
+
+    // Local storage fallback for offline / un-synced rooms
+    const localSaved = localStorage.getItem(`orbit_room_data_${upperCode}`);
+    if (localSaved) {
+      try {
+        const parsed = JSON.parse(localSaved) as OrbitState;
+        localStorage.setItem("orbit_room_code", upperCode);
+        setRoomCode(upperCode);
+        setActiveUser("User_B");
+        setState(parsed);
+        return true;
+      } catch (e) {
+        console.warn("Failed parsing local room state:", e);
+      }
+    }
+
     return false;
   };
 
@@ -238,11 +269,12 @@ export default function App() {
   const syncStateUpdate = async (updatedState: OrbitState) => {
     setState(updatedState);
     if (roomCode) {
+      localStorage.setItem(`orbit_room_data_${roomCode}`, JSON.stringify(updatedState));
       try {
         const roomRef = doc(db, "orbit_rooms", roomCode);
         await setDoc(roomRef, updatedState, { merge: true });
       } catch (err) {
-        console.warn("Firestore sync error:", err);
+        console.warn("Firestore sync notice (local backup retained):", err);
       }
     }
   };
