@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { TamagotchiState, UserRole, UserProfile, MinigameType } from "../types";
 import { Utensils, Smile, Zap, Heart, Sparkles, Gamepad2, Moon, Edit3, Check, HeartHandshake, UserCheck, Shirt, Palette, ShieldCheck } from "lucide-react";
-import darkHoodieImg from "../assets/skins/dark_hoodie.jpg";
-import kissHoodieImg from "../assets/skins/kiss_hoodie.jpg";
+import { DARK_HOODIE_BASE64, KISS_HOODIE_BASE64 } from "../assets/skins/skinData";
 
 interface TamagotchiSproutProps {
   tamagotchi: TamagotchiState;
@@ -39,7 +38,7 @@ const SKINS_CATALOG = [
     name: "Chibi Dark Hoodie ✨",
     tagline: "Custom Sticker Skin",
     description: "Cute dark skin tone chibi character wearing a charcoal hoodie & navy jeans.",
-    imageUrl: darkHoodieImg,
+    imageUrl: DARK_HOODIE_BASE64,
     type: "image",
   },
   {
@@ -47,7 +46,7 @@ const SKINS_CATALOG = [
     name: "Chibi KISS Rock Hoodie 🎸",
     tagline: "Custom Sticker Skin",
     description: "Tan skin tone chibi character with fluffy black hair & KISS rock band hoodie.",
-    imageUrl: kissHoodieImg,
+    imageUrl: KISS_HOODIE_BASE64,
     type: "image",
   },
 ];
@@ -269,7 +268,7 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
               {currentSkinId === "dark_hoodie" || currentSkinId === "kiss_hoodie" ? (
                 <div className={`relative w-32 h-32 rounded-3xl overflow-hidden border-2 border-pink-400/60 shadow-[0_0_25px_rgba(236,72,153,0.4)] group-hover:scale-105 transition-all duration-300 bg-black/60 ${actionEffect ? "animate-bounce" : ""}`}>
                   <img
-                    src={currentSkinId === "dark_hoodie" ? darkHoodieImg : kissHoodieImg}
+                    src={currentSkinId === "dark_hoodie" ? DARK_HOODIE_BASE64 : KISS_HOODIE_BASE64}
                     alt="Chibi Partner Skin"
                     className="w-full h-full object-contain p-1"
                   />
