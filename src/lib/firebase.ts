@@ -1,24 +1,37 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
-// Firebase App configuration
+// Dynamic configuration prioritizing Vite environment variables (for Vercel deployment)
+// with fallback to local JSON config
+const metaEnv = (import.meta as any).env || {};
+
 const firebaseConfig = {
-  apiKey: firebaseConfigJson.apiKey,
-  authDomain: firebaseConfigJson.authDomain,
-  projectId: firebaseConfigJson.projectId,
-  storageBucket: firebaseConfigJson.storageBucket,
-  messagingSenderId: firebaseConfigJson.messagingSenderId,
-  appId: firebaseConfigJson.appId,
+  apiKey: (metaEnv.VITE_FIREBASE_API_KEY as string) || firebaseConfigJson?.apiKey || "",
+  authDomain: (metaEnv.VITE_FIREBASE_AUTH_DOMAIN as string) || firebaseConfigJson?.authDomain || "",
+  projectId: (metaEnv.VITE_FIREBASE_PROJECT_ID as string) || firebaseConfigJson?.projectId || "",
+  storageBucket: (metaEnv.VITE_FIREBASE_STORAGE_BUCKET as string) || firebaseConfigJson?.storageBucket || "",
+  messagingSenderId: (metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID as string) || firebaseConfigJson?.messagingSenderId || "",
+  appId: (metaEnv.VITE_FIREBASE_APP_ID as string) || firebaseConfigJson?.appId || "",
 };
 
-// Initialize Firebase
+const databaseId = (metaEnv.VITE_FIRESTORE_DATABASE_ID as string) || firebaseConfigJson?.firestoreDatabaseId || "(default)";
+
+// Initialize Firebase App safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Services
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfigJson.firestoreDatabaseId || "(default)");
+export const db = getFirestore(app, databaseId);
 
 // Auth Providers
 export const googleProvider = new GoogleAuthProvider();
@@ -26,17 +39,16 @@ googleProvider.setCustomParameters({
   prompt: "select_account",
 });
 
-// Helper for Google Sign-In with fallback
+// Helper for Google Sign-In (with popup and redirect support for Vercel/mobile)
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    console.warn("Google popup sign in error, attempting anonymous sign in fallback:", error);
-    if (error?.code === "auth/popup-blocked" || error?.code === "auth/operation-not-allowed" || error?.code === "auth/cancelled-popup-request") {
-      // Fallback for sandboxed iframes
-      const anonResult = await signInAnonymously(auth);
-      return anonResult.user;
+    console.warn("Google popup sign-in failed, attempting redirect method:", error);
+    if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
     }
     throw error;
   }
@@ -45,3 +57,6 @@ export const signInWithGoogle = async () => {
 export const logoutUser = async () => {
   await signOut(auth);
 };
+
+export { signInWithEmailAndPassword, createUserWithEmailAndPassword };
+

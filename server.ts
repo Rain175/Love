@@ -35,6 +35,42 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
+// Fallback narrative generator when AI quota is exceeded or offline
+function getFallbackNarrative(
+  actionType: string,
+  activeUser: string,
+  partnerName: string,
+  actionDescription: string,
+  state: OrbitState
+): string {
+  const days = state.countdown?.days_remaining ?? 14;
+  switch (actionType) {
+    case "feed_sprout":
+      return `${partnerName} fed Sprout a delicious meal! Sprout is happily munching away and sending love across the miles. (${days} days until reunion!)`;
+    case "play_sprout":
+      return `${partnerName} spent quality time playing with Sprout! The little pet is full of joy and energetic bounces today.`;
+    case "rest_sprout":
+      return `${partnerName} tucked Sprout in for a cozy nap. Sprout is sleeping peacefully, dreaming of your upcoming reunion!`;
+    case "pet_sprout":
+      return `${partnerName} gave Sprout warm, gentle headpats. Sprout purrs with contentment and feels deeply cherished.`;
+    case "chat":
+      return `${partnerName} shared a sweet message in your private chat.`;
+    case "add_scrapbook":
+      return `${partnerName} added a precious memory to your shared scrapbook! Another beautiful moment captured for your journey together.`;
+    case "create_photobooth_request":
+    case "complete_photobooth_request":
+      return `${partnerName} updated your Photo Booth strip! Memory captured and locked in your shared love vault.`;
+    case "unlock_letter":
+    case "add_letter":
+      return `${partnerName} interacted with your Open-When letters! Love notes that keep your hearts connected across any distance.`;
+    case "add_intimacy":
+    case "view_intimacy":
+      return `${partnerName} updated the Intimacy Zone! Your private moments remain safely encrypted.`;
+    default:
+      return `${partnerName} updated your shared Orbit space. Only ${days} days remaining until you're back in each other's arms!`;
+  }
+}
+
 // System instruction for Game Master
 const GAME_MASTER_SYSTEM_INSTRUCTION = `
 You are the romantic, witty Game Master and application engine for "Orbit", a private long-distance couple's app.
@@ -279,8 +315,8 @@ app.post("/api/orbit/action", async (req, res) => {
   }
   currentState.chat_history_log.unshift(chatUpdate);
 
-  // Generate Narrative via Gemini if available
-  let narrative = `${partnerName} (${activeUser}) updated Orbit state: ${actionDescription}.`;
+  // Generate Narrative via Gemini if available (with rich romantic fallback when rate limited)
+  let narrative = getFallbackNarrative(payload.action_type, activeUser, partnerName, actionDescription, currentState);
   const ai = getGeminiClient();
   if (ai) {
     try {
@@ -294,8 +330,8 @@ app.post("/api/orbit/action", async (req, res) => {
       if (response.text) {
         narrative = response.text.trim();
       }
-    } catch (err) {
-      console.warn("Gemini API call skipped or failed, using standard narrative fallback.", err);
+    } catch (err: any) {
+      console.warn("Gemini API note: Using romantic narrative fallback due to limit/offline status:", err?.message || err);
     }
   }
 

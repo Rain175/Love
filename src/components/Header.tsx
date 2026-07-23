@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { UserRole, OrbitState } from "../types";
 import { User } from "firebase/auth";
-import { Heart, ShieldCheck, Copy, Check, Users, KeyRound } from "lucide-react";
+import { Heart, ShieldCheck, Copy, Check, Users, KeyRound, LogOut } from "lucide-react";
 
 interface HeaderProps {
   activeUser: UserRole;
   onUserSwitch: (role: UserRole) => void;
   onOpenOnboarding: () => void;
+  onLeaveRoom: () => void;
   state: OrbitState;
   roomCode: string | null;
   user: User | null;
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeUser,
   onUserSwitch,
   onOpenOnboarding,
+  onLeaveRoom,
   state,
   roomCode,
   user,
@@ -60,17 +62,28 @@ export const Header: React.FC<HeaderProps> = ({
             </p>
           </div>
 
-          {/* Room Code Pill */}
+          {/* Room Code Pill & Leave Room Button */}
           {roomCode ? (
-            <button
-              onClick={copyRoomCode}
-              className="ml-2 px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/15 rounded-full text-xs font-mono font-semibold text-pink-300 flex items-center gap-1.5 transition-all active:scale-95 shadow"
-              title="Click to copy room code"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-pink-400" />
-              <span>Room: {roomCode}</span>
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-            </button>
+            <div className="ml-2 flex items-center gap-1.5">
+              <button
+                onClick={copyRoomCode}
+                className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/15 rounded-full text-xs font-mono font-semibold text-pink-300 flex items-center gap-1.5 transition-all active:scale-95 shadow"
+                title="Click to copy room code"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-pink-400" />
+                <span>Room: {roomCode}</span>
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              </button>
+
+              <button
+                onClick={onLeaveRoom}
+                className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-full text-xs font-medium flex items-center gap-1 transition-all active:scale-95 shadow cursor-pointer"
+                title="Leave current room"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Leave Room</span>
+              </button>
+            </div>
           ) : (
             <button
               onClick={onOpenOnboarding}
@@ -82,39 +95,23 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Controls & Account Switcher */}
+        {/* Active Partner Identity Badge (Locked to authenticated user) */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          {/* User Role Switcher */}
-          <div className="bg-white/5 p-1 rounded-2xl border border-white/10 flex items-center">
-            <button
-              onClick={() => onUserSwitch("User_A")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeUser === "User_A"
-                  ? "bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-pink-300" />
-              <span>User_A ({state.users.user_a.name})</span>
-            </button>
-            <button
-              onClick={() => onUserSwitch("User_B")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeUser === "User_B"
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-indigo-300" />
-              <span>User_B ({state.users.user_b.name})</span>
-            </button>
+          <div className="bg-white/5 px-3 py-1.5 rounded-2xl border border-white/10 flex items-center gap-2 shadow-inner">
+            <div className={`w-2.5 h-2.5 rounded-full ${activeUser === "User_A" ? "bg-pink-400" : "bg-indigo-400"}`} />
+            <span className="text-xs font-bold text-white">
+              {activeUser === "User_A" ? state.users.user_a.name : state.users.user_b.name}
+            </span>
+            <span className="text-[10px] font-mono tracking-wider font-semibold uppercase px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
+              {activeUser === "User_A" ? "Partner A" : "Partner B"}
+            </span>
           </div>
 
-          {/* Onboarding & Room Settings */}
+          {/* Partner Link / Room Settings */}
           <button
             onClick={onOpenOnboarding}
             className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm"
-            title="Manage Google Login & Link Code"
+            title="Manage Partner Code & Account"
           >
             <Users className="w-3.5 h-3.5 text-pink-400" />
             <span className="hidden sm:inline">Partner Link</span>
@@ -124,3 +121,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

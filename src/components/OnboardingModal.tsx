@@ -306,7 +306,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             onClick={onCompleteOnboarding}
             className="text-[11px] text-slate-400 hover:text-slate-200 underline underline-offset-4"
           >
-            Explore Demo Mode First
+            Close Modal
           </button>
         </div>
       </div>

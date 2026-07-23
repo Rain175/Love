@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
 import { OrbitState, UserRole, ActionPayload, MinigameType } from "./types";
 import { initialOrbitState } from "./data/initialState";
@@ -15,6 +15,8 @@ import { IntimacyZone } from "./components/IntimacyZone";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { TamagotchiMinigamesModal } from "./components/TamagotchiMinigamesModal";
 import { ClashRoyaleNav, NavTabType } from "./components/ClashRoyaleNav";
+import { AuthGate } from "./components/AuthGate";
+import { RoomGate } from "./components/RoomGate";
 import { Heart, Camera, BookOpen } from "lucide-react";
 
 export default function App() {
@@ -30,6 +32,7 @@ export default function App() {
 
   // Auth & Room State
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [roomCode, setRoomCode] = useState<string | null>(() => localStorage.getItem("orbit_room_code"));
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -42,11 +45,26 @@ export default function App() {
   const partnerProfile = state.users[partnerUserKey];
   const partnerFirstName = partnerProfile.name.split(" ")[0];
 
-  // 1. Firebase Auth Listener
+  // 1. Firebase Auth Listener + User Room Mapping Lookup
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // Look up persistent user room mapping in Firestore
+        try {
+          const userRoomRef = doc(db, "orbit_user_rooms", currentUser.uid);
+          const userRoomSnap = await getDoc(userRoomRef);
+          if (userRoomSnap.exists()) {
+            const savedCode = userRoomSnap.data()?.roomCode;
+            if (savedCode) {
+              setRoomCode(savedCode);
+              localStorage.setItem("orbit_room_code", savedCode);
+            }
+          }
+        } catch (err) {
+          console.warn("User room mapping lookup notice:", err);
+        }
+
         setState((prev) => {
           const isUserA = activeUser === "User_A";
           const currentRoleKey = isUserA ? "user_a" : "user_b";
@@ -63,21 +81,18 @@ export default function App() {
                 email: currentUser.email || undefined,
                 photo_url: currentUser.photoURL || undefined,
               },
-              [otherRoleKey]: {
-                ...prev.users[otherRoleKey],
-                name: prev.users[otherRoleKey].name === (currentUser.displayName || currentUser.email?.split("@")[0])
-                  ? (isUserA ? "Partner B (Maya)" : "Partner A (Alex)")
-                  : prev.users[otherRoleKey].name,
-              },
             },
           };
         });
+      } else {
+        setRoomCode(null);
       }
+      setAuthLoading(false);
     });
     return () => unsubscribe();
   }, [activeUser]);
 
-  // 2. Real-time Firestore Sync Listener
+  // 2. Real-time Firestore Sync Listener for active room
   useEffect(() => {
     if (!roomCode) return;
 
@@ -88,6 +103,16 @@ export default function App() {
         if (docSnap.exists()) {
           const roomData = docSnap.data() as OrbitState;
           const targetDate = roomData.countdown?.target_date || TARGET_REUNION_DATE;
+
+          // Lock active user role based on authenticated Firebase UID
+          if (user?.uid) {
+            if (roomData.users?.user_b?.uid === user.uid) {
+              setActiveUser("User_B");
+            } else if (roomData.users?.user_a?.uid === user.uid) {
+              setActiveUser("User_A");
+            }
+          }
+
           setState({
             ...roomData,
             roomCode,
@@ -110,7 +135,22 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, [roomCode]);
+  }, [roomCode, user?.uid]);
+
+  // Save user room mapping helper
+  const linkUserToRoom = async (code: string) => {
+    if (user) {
+      try {
+        await setDoc(
+          doc(db, "orbit_user_rooms", user.uid),
+          { roomCode: code, updatedAt: new Date().toISOString() },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn("Failed to write orbit_user_rooms mapping:", err);
+      }
+    }
+  };
 
   // Room Creation Handler
   const handleCreateRoom = async (partnerName?: string): Promise<string> => {
@@ -142,6 +182,7 @@ export default function App() {
 
     const roomRef = doc(db, "orbit_rooms", code);
     await setDoc(roomRef, newRoomState);
+    await linkUserToRoom(code);
 
     localStorage.setItem("orbit_room_code", code);
     setRoomCode(code);
@@ -156,6 +197,7 @@ export default function App() {
     const docSnap = await getDoc(roomRef);
 
     if (docSnap.exists()) {
+      await linkUserToRoom(upperCode);
       localStorage.setItem("orbit_room_code", upperCode);
       setRoomCode(upperCode);
       setActiveUser("User_B");
@@ -175,6 +217,21 @@ export default function App() {
       return true;
     }
     return false;
+  };
+
+  // Leave Room Handler
+  const handleLeaveRoom = async () => {
+    if (window.confirm("Are you sure you want to leave this room? You can create a new room or join another room anytime.")) {
+      localStorage.removeItem("orbit_room_code");
+      if (user) {
+        try {
+          await deleteDoc(doc(db, "orbit_user_rooms", user.uid));
+        } catch (err) {
+          console.warn("Failed to clear user room mapping:", err);
+        }
+      }
+      setRoomCode(null);
+    }
   };
 
   // Sync State with Firestore & Local State
@@ -423,6 +480,29 @@ export default function App() {
     });
   };
 
+  // 1. Mandatory Sign In Gate (Demo mode removed)
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 bg-[#0A0518] text-white flex flex-col items-center justify-center p-4">
+        <div className="relative w-16 h-16 rounded-3xl bg-gradient-to-tr from-pink-500 to-indigo-600 p-0.5 animate-pulse flex items-center justify-center mb-4">
+          <div className="w-full h-full bg-[#0A0518] rounded-[22px] flex items-center justify-center">
+            <Heart className="w-8 h-8 text-pink-400 fill-pink-400 animate-ping" />
+          </div>
+        </div>
+        <p className="text-xs text-slate-300 font-mono tracking-widest uppercase">Initializing Orbit Security...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthGate />;
+  }
+
+  // 2. Mandatory Room Setup Gate
+  if (!roomCode) {
+    return <RoomGate user={user} onJoinRoom={handleJoinRoom} onCreateRoom={handleCreateRoom} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0518] text-slate-100 flex flex-col font-sans selection:bg-pink-500 selection:text-white relative overflow-x-hidden">
       {/* Background Ambient Orbs */}
@@ -435,6 +515,7 @@ export default function App() {
         activeUser={activeUser}
         onUserSwitch={setActiveUser}
         onOpenOnboarding={() => setShowOnboarding(true)}
+        onLeaveRoom={handleLeaveRoom}
         state={state}
         roomCode={roomCode}
         user={user}

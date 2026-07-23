@@ -4,5 +4,8 @@ service cloud.firestore {
     match /orbit_rooms/{roomCode} {
       allow read, write: if true;
     }
+    match /orbit_user_rooms/{userId} {
+      allow read, write: if true;
+    }
   }
 }
