@@ -25,6 +25,7 @@ export interface TamagotchiState {
   status_message: string;
   last_fed?: string;
   last_played?: string;
+  selected_skin?: "sprout" | "dark_hoodie" | "kiss_hoodie" | string;
 }
 
 export interface ScrapbookItem {
@@ -125,6 +126,7 @@ export interface ActionPayload {
     | "view_intimacy" 
     | "add_intimacy" 
     | "update_countdown"
+    | "change_skin"
     | "raw_command";
   action_input?: string;
   extra_data?: any;

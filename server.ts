@@ -89,9 +89,12 @@ app.get("/api/orbit/state", (req, res) => {
 // API Endpoint: Process Action & Update State
 app.post("/api/orbit/action", async (req, res) => {
   const payload: ActionPayload = req.body;
+  if (req.body.current_state) {
+    currentState = { ...currentState, ...req.body.current_state };
+  }
   const activeUser = payload.active_user || "User_A";
   const userKey = activeUser === "User_A" ? "user_a" : "user_b";
-  const partnerName = currentState.users[userKey].name;
+  const partnerName = currentState.users?.[userKey]?.name || (activeUser === "User_A" ? "Nithilan" : "Sofia");
 
   currentState.active_user = activeUser;
   currentState.timestamp = new Date().toISOString();
@@ -143,6 +146,13 @@ app.post("/api/orbit/action", async (req, res) => {
       }
       currentState.users[userKey].last_action = `Updated mood to ${newMood}`;
       actionDescription = `[${activeUser}] updated daily mood to "${newMood}"`;
+      break;
+    }
+    case "change_skin": {
+      const skinId = payload.action_input || payload.extra_data?.skin || "sprout";
+      currentState.tamagotchi.selected_skin = skinId;
+      actionDescription = `[${activeUser}] equipped Sprout skin: ${skinId}`;
+      currentState.users[userKey].last_action = "Changed Sprout skin";
       break;
     }
     case "chat": {

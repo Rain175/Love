@@ -279,7 +279,7 @@ export default function App() {
     }
   };
 
-  // Dispatch Actions (Backend Server + Local Fallback)
+  // Dispatch Actions (Local State Engine + Async API Sync + Firestore & LocalStorage)
   const dispatchAction = async (payload: Partial<ActionPayload>) => {
     setIsLoading(true);
     const fullPayload: ActionPayload = {
@@ -289,32 +289,52 @@ export default function App() {
       extra_data: payload.extra_data,
     };
 
+    // 1. Immediately apply action to client room state & sync to Firestore & localStorage
+    const nextState = executeLocalAction(fullPayload);
+    await syncStateUpdate(nextState);
+
+    // 2. Asynchronously notify backend server for Gemini narrative response
     try {
       const res = await fetch("/api/orbit/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(fullPayload),
+        body: JSON.stringify({ ...fullPayload, roomCode, current_state: nextState }),
       });
 
       if (res.ok) {
-        const updatedState: OrbitState = await res.json();
-        await syncStateUpdate(updatedState);
-      } else {
-        throw new Error("Action request failed");
+        const serverRes = await res.json();
+        if (serverRes.narrative_response) {
+          setState((prev) => ({
+            ...prev,
+            narrative_response: serverRes.narrative_response,
+            chat_history_update: serverRes.chat_history_update || prev.chat_history_update,
+          }));
+        }
       }
     } catch (err) {
-      console.warn("Backend API error, running local state engine with Firestore sync:", err);
-      executeLocalAction(fullPayload);
+      console.warn("Backend API sync notice:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Local Action Execution Logic
-  const executeLocalAction = (payload: ActionPayload) => {
+  const executeLocalAction = (payload: ActionPayload): OrbitState => {
     const userKey = activeUser === "User_A" ? "user_a" : "user_b";
     const partnerKey = activeUser === "User_A" ? "user_b" : "user_a";
-    const nextState = { ...state, timestamp: new Date().toISOString(), active_user: activeUser };
+    const nextState: OrbitState = {
+      ...state,
+      timestamp: new Date().toISOString(),
+      active_user: activeUser,
+      scrapbook: [...(state.scrapbook || [])],
+      tamagotchi: { ...state.tamagotchi },
+      users: { ...state.users },
+      letters: [...(state.letters || [])],
+      intimacy_zone: {
+        active_encrypted_items: [...(state.intimacy_zone?.active_encrypted_items || [])],
+      },
+      photobooth_requests: [...(state.photobooth_requests || [])],
+    };
 
     if (payload.action_type === "feed_sprout") {
       nextState.tamagotchi.hunger = Math.min(100, nextState.tamagotchi.hunger + 25);
@@ -335,6 +355,13 @@ export default function App() {
       nextState.tamagotchi.happiness = Math.min(100, nextState.tamagotchi.happiness + 15);
       nextState.tamagotchi.status_message = `${nextState.users[userKey].name} gave ${nextState.users[partnerKey].name} sweet cuddles!`;
       nextState.users[userKey].last_action = `Cuddled ${nextState.users[partnerKey].name}`;
+    } else if (payload.action_type === "change_skin") {
+      const selectedSkin = payload.action_input || payload.extra_data?.skin || "sprout";
+      nextState.tamagotchi.selected_skin = selectedSkin;
+      nextState.tamagotchi.status_message = `${nextState.users[userKey].name} equipped ${
+        selectedSkin === "dark_hoodie" ? "Chibi Dark Hoodie" : selectedSkin === "kiss_hoodie" ? "Chibi KISS Rock Hoodie" : "Classic Sprout"
+      } skin!`;
+      nextState.users[userKey].last_action = "Changed Sprout skin";
     } else if (payload.action_type === "set_mood") {
       nextState.users[userKey].mood = payload.action_input || "Happy";
       if (payload.extra_data?.custom_status) {
@@ -353,7 +380,7 @@ export default function App() {
         image_url: image_url || "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=600&q=80",
         tags: tags || ["memory"],
       };
-      nextState.scrapbook.unshift(newItem);
+      nextState.scrapbook = [newItem, ...(nextState.scrapbook || [])];
       nextState.users[userKey].last_action = "Added photo to Scrapbook";
     } else if (payload.action_type === "create_photobooth_request") {
       if (!nextState.photobooth_requests) nextState.photobooth_requests = [];
@@ -433,7 +460,16 @@ export default function App() {
       }
     }
 
-    syncStateUpdate(nextState);
+    return nextState;
+  };
+
+  // Change Skin Handler
+  const handleChangeSkin = (skinId: string) => {
+    dispatchAction({
+      action_type: "change_skin",
+      action_input: skinId,
+      extra_data: { skin: skinId },
+    });
   };
 
   // Direct Interactive Tamagotchi Care Action
@@ -633,6 +669,7 @@ export default function App() {
               activeUser={activeUser}
               onDirectAction={handleDirectTamagotchiAction}
               onSetMood={handleSetMood}
+              onChangeSkin={handleChangeSkin}
               onOpenMinigame={(type) => setActiveMinigame(type)}
               isLoading={isLoading}
             />
