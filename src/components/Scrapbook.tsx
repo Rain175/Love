@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
-import { Image, Plus, Calendar, X, Sparkles, Upload, Check } from "lucide-react";
+import { Image, Plus, Calendar, X, Sparkles, Upload, Check, Loader2, ArrowDown } from "lucide-react";
+import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -19,6 +20,8 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
   const [caption, setCaption] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionNotice, setCompressionNotice] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<ScrapbookItem | null>(null);
@@ -31,15 +34,30 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     ? items.filter((item) => item.tags?.includes(activeTagFilter))
     : items;
 
-  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setUploadedFilePreview(result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsCompressing(true);
+    setCompressionNotice(null);
+
+    try {
+      const result = await compressImageIfNeeded(file, 1.0);
+      setUploadedFilePreview(result.dataUrl);
+
+      if (result.wasCompressed) {
+        setCompressionNotice(
+          `Photo was larger than 1 MB (${formatBytes(result.originalSize)}). Auto-compressed to ${formatBytes(result.compressedSize)}!`
+        );
+      } else {
+        setCompressionNotice(
+          `Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to compress photo:", err);
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -57,6 +75,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     setCaption("");
     setCustomPhotoInput("");
     setUploadedFilePreview(null);
+    setCompressionNotice(null);
     setTagInput("");
     setIsModalOpen(false);
   };
@@ -228,14 +247,30 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                 <input
                   type="file"
                   accept="image/*"
+                  disabled={isCompressing}
                   onChange={handlePhoneFileUpload}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 file:border file:border-sky-500/30 hover:file:bg-sky-500/30 cursor-pointer"
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 file:border file:border-sky-500/30 hover:file:bg-sky-500/30 cursor-pointer disabled:opacity-50"
                 />
-                {uploadedFilePreview && (
+
+                {isCompressing && (
+                  <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center gap-2 text-xs text-sky-300 animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+                    <span>Compressing image to under 1 MB...</span>
+                  </div>
+                )}
+
+                {compressionNotice && !isCompressing && (
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{compressionNotice}</span>
+                  </div>
+                )}
+
+                {uploadedFilePreview && !isCompressing && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-sky-400 mt-2">
                     <img src={uploadedFilePreview} alt="Phone Upload Preview" className="w-full h-full object-cover" />
                     <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Photo Loaded from Phone
+                      <Check className="w-3 h-3" /> Photo Loaded & Compressed
                     </span>
                   </div>
                 )}

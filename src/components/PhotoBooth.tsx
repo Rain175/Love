@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
-import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon } from "lucide-react";
+import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon, Loader2, Check } from "lucide-react";
+import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -24,6 +25,12 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const [newCaption, setNewCaption] = useState("");
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
 
+  // Compression states
+  const [isCompressingReq, setIsCompressingReq] = useState(false);
+  const [reqCompressionNotice, setReqCompressionNotice] = useState<string | null>(null);
+  const [isCompressingRes, setIsCompressingRes] = useState(false);
+  const [resCompressionNotice, setResCompressionNotice] = useState<string | null>(null);
+
   // Response state for completing a request
   const [completingRequestId, setCompletingRequestId] = useState<string | null>(null);
   const [responsePhotoUrl, setResponsePhotoUrl] = useState("");
@@ -33,14 +40,31 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const pendingOutgoing = requests.find((r) => r.status === "pending" && r.requester === activeUser);
   const completedStrips = requests.filter((r) => r.status === "completed");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setPreview: (val: string | null) => void) => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setPreview: (val: string | null) => void,
+    setIsCompressing: (val: boolean) => void,
+    setNotice: (val: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsCompressing(true);
+    setNotice(null);
+
+    try {
+      const result = await compressImageIfNeeded(file, 1.0);
+      setPreview(result.dataUrl);
+
+      if (result.wasCompressed) {
+        setNotice(`Compressed from ${formatBytes(result.originalSize)} to ${formatBytes(result.compressedSize)} (< 1MB)!`);
+      } else {
+        setNotice(`Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`);
+      }
+    } catch (err) {
+      console.error("Image compression error:", err);
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -51,6 +75,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setNewPhotoUrl("");
     setNewCaption("");
     setUploadedPreview(null);
+    setReqCompressionNotice(null);
     setIsNewRequestModalOpen(false);
   };
 
@@ -61,6 +86,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setCompletingRequestId(null);
     setResponsePhotoUrl("");
     setResponseUploadedPreview(null);
+    setResCompressionNotice(null);
   };
 
   return (
@@ -164,9 +190,22 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => handleFileUpload(e, setResponseUploadedPreview)}
-                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer"
+                    disabled={isCompressingRes}
+                    onChange={(e) => handleFileUpload(e, setResponseUploadedPreview, setIsCompressingRes, setResCompressionNotice)}
+                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer disabled:opacity-50"
                   />
+                  {isCompressingRes && (
+                    <div className="p-2 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center gap-2 text-xs text-pink-300 animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
+                      <span>Compressing frame (under 1 MB)...</span>
+                    </div>
+                  )}
+                  {resCompressionNotice && !isCompressingRes && (
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{resCompressionNotice}</span>
+                    </div>
+                  )}
                 </div>
 
                 {!responseUploadedPreview && (
@@ -305,9 +344,22 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, setUploadedPreview)}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer"
+                  disabled={isCompressingReq}
+                  onChange={(e) => handleFileUpload(e, setUploadedPreview, setIsCompressingReq, setReqCompressionNotice)}
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer disabled:opacity-50"
                 />
+                {isCompressingReq && (
+                  <div className="p-2 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center gap-2 text-xs text-pink-300 animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
+                    <span>Compressing photo (under 1 MB)...</span>
+                  </div>
+                )}
+                {reqCompressionNotice && !isCompressingReq && (
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{reqCompressionNotice}</span>
+                  </div>
+                )}
                 {uploadedPreview && (
                   <div className="relative aspect-square w-32 mx-auto rounded-xl overflow-hidden border border-pink-400 mt-2">
                     <img src={uploadedPreview} alt="Frame 1 Preview" className="w-full h-full object-cover" />

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
-import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart } from "lucide-react";
+import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2, Check } from "lucide-react";
+import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -22,16 +23,34 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [secretMessage, setSecretMessage] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionNotice, setCompressionNotice] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
-  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsCompressing(true);
+    setCompressionNotice(null);
+
+    try {
+      const result = await compressImageIfNeeded(file, 1.0);
+      setUploadedFilePreview(result.dataUrl);
+
+      if (result.wasCompressed) {
+        setCompressionNotice(
+          `Compressed secret photo from ${formatBytes(result.originalSize)} to ${formatBytes(result.compressedSize)} (< 1MB)!`
+        );
+      } else {
+        setCompressionNotice(
+          `Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to compress secret photo:", err);
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -46,6 +65,7 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
     setSecretMessage("");
     setCustomPhotoInput("");
     setUploadedFilePreview(null);
+    setCompressionNotice(null);
     setIsAddModalOpen(false);
   };
 
@@ -231,10 +251,26 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 <input
                   type="file"
                   accept="image/*"
+                  disabled={isCompressing}
                   onChange={handlePhoneFileUpload}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer"
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer disabled:opacity-50"
                 />
-                {uploadedFilePreview && (
+
+                {isCompressing && (
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2 text-xs text-purple-300 animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                    <span>Compressing secret photo (under 1 MB)...</span>
+                  </div>
+                )}
+
+                {compressionNotice && !isCompressing && (
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{compressionNotice}</span>
+                  </div>
+                )}
+
+                {uploadedFilePreview && !isCompressing && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-purple-400 mt-2">
                     <img src={uploadedFilePreview} alt="Secret Upload Preview" className="w-full h-full object-cover" />
                   </div>
