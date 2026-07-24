@@ -1,7 +1,7 @@
 // WebFlow Install - Service Worker
 // Minimal service worker with a fetch handler for PWA installability on Android.
 
-const CACHE_NAME = 'webflow-install-v1';
+const CACHE_NAME = 'orbit-v2';
 const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon-512.png'];
 
 // Install: pre-cache essential shell assets
