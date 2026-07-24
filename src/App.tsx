@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, sanitizeForFirestore } from "./lib/firebase";
-import { OrbitState, UserRole, ActionPayload, MinigameType } from "./types";
+import { OrbitState, UserRole, ActionPayload, MinigameType, UserLocation } from "./types";
 import { initialOrbitState } from "./data/initialState";
 import { calculateCountdown, TARGET_REUNION_DATE } from "./utils/countdown";
 import { applyDepletion } from "./utils/tamagotchi";
 import { Header } from "./components/Header";
 import { PartnerTab } from "./components/PartnerTab";
+import { CoupleMap } from "./components/CoupleMap";
 import { TamagotchiSprout } from "./components/TamagotchiSprout";
 import { Scrapbook } from "./components/Scrapbook";
 import { PhotoBooth } from "./components/PhotoBooth";
@@ -582,6 +583,21 @@ export default function App() {
         nextState.countdown = calculateCountdown(newTarget);
         nextState.users[userKey].last_action = "Updated Reunion Date";
       }
+    } else if (payload.action_type === "update_location") {
+      if (payload.extra_data) {
+        nextState.users[userKey].location = {
+          lat: payload.extra_data.lat,
+          lng: payload.extra_data.lng,
+          updated_at: new Date().toISOString(),
+          city_or_place: payload.extra_data.city_or_place || "",
+          battery_level: payload.extra_data.battery_level,
+          is_sharing: payload.extra_data.is_sharing !== false,
+        };
+        nextState.users[userKey].last_action = `Updated location (${payload.extra_data.city_or_place || "GPS"})`;
+      }
+    } else if (payload.action_type === "send_location_ping") {
+      nextState.users[userKey].last_action = "Sent a love ping on Live Map! ❤️";
+      nextState.narrative_response = `${nextState.users[userKey].name} sent a flying love heart across the map to ${nextState.users[partnerKey].name}! 💕`;
     }
 
     return nextState;
@@ -669,6 +685,19 @@ export default function App() {
     dispatchAction({
       action_type: "add_intimacy",
       extra_data: { title, secret_message: secretMessage, image_url: imageUrl },
+    });
+  };
+
+  const handleUpdateLocation = (locationData: Partial<UserLocation>) => {
+    dispatchAction({
+      action_type: "update_location",
+      extra_data: locationData,
+    });
+  };
+
+  const handleSendLocationPing = () => {
+    dispatchAction({
+      action_type: "send_location_ping",
     });
   };
 
@@ -824,6 +853,16 @@ export default function App() {
               isLoading={isLoading}
             />
           </div>
+        )}
+
+        {/* Tab 6: Live Couple Map Tab */}
+        {activeTab === "map" && (
+          <CoupleMap
+            state={state}
+            activeUser={activeUser}
+            onUpdateLocation={handleUpdateLocation}
+            onSendPing={handleSendLocationPing}
+          />
         )}
       </main>
 

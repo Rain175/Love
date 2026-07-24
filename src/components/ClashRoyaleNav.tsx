@@ -1,7 +1,7 @@
 import React from "react";
-import { Users, Image, Sparkles, Lock, Mail, Heart, Crown } from "lucide-react";
+import { Users, Image, Sparkles, Lock, Mail, Crown, MapPin } from "lucide-react";
 
-export type NavTabType = "partner" | "memories" | "pet" | "vault" | "letters";
+export type NavTabType = "partner" | "memories" | "pet" | "vault" | "letters" | "map";
 
 interface ClashRoyaleNavProps {
   currentTab: NavTabType;
@@ -187,6 +187,33 @@ export const ClashRoyaleNav: React.FC<ClashRoyaleNavProps> = ({
             </div>
             <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold mt-1">
               Letters
+            </span>
+          </button>
+
+          {/* TAB 6: MAP */}
+          <button
+            onClick={() => onSelectTab("map")}
+            className={`flex-1 flex flex-col items-center justify-center py-1 sm:py-1.5 transition-all relative rounded-2xl active:scale-95 ${
+              currentTab === "map"
+                ? "text-emerald-300 font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {currentTab === "map" && (
+              <div className="absolute -top-2.5 w-8 h-1 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.9)] animate-pulse" />
+            )}
+
+            <div
+              className={`p-2 rounded-2xl transition-all relative ${
+                currentTab === "map"
+                  ? "bg-gradient-to-b from-emerald-500/30 to-emerald-700/30 border border-emerald-400/60 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-110"
+                  : "bg-white/5 border border-white/5"
+              }`}
+            >
+              <MapPin className={`w-5 h-5 sm:w-6 sm:h-6 ${currentTab === "map" ? "text-emerald-300" : "text-slate-400"}`} />
+            </div>
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold mt-1">
+              Live Map
             </span>
           </button>
         </div>

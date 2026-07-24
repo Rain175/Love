@@ -1,5 +1,14 @@
 export type UserRole = "User_A" | "User_B";
 
+export interface UserLocation {
+  lat: number;
+  lng: number;
+  updated_at: string;
+  city_or_place?: string;
+  battery_level?: number;
+  is_sharing?: boolean;
+}
+
 export interface UserProfile {
   name: string;
   mood: string;
@@ -8,6 +17,7 @@ export interface UserProfile {
   uid?: string;
   email?: string;
   photo_url?: string;
+  location?: UserLocation;
 }
 
 export interface CountdownState {
@@ -128,6 +138,8 @@ export interface ActionPayload {
     | "add_intimacy" 
     | "update_countdown"
     | "change_skin"
+    | "update_location"
+    | "send_location_ping"
     | "raw_command";
   action_input?: string;
   extra_data?: any;

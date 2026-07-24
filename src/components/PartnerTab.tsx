@@ -283,6 +283,11 @@ export const PartnerTab: React.FC<PartnerTabProps> = ({
                     <Smile className="w-3.5 h-3.5" />
                     <span>Mood: {userA.mood}</span>
                   </p>
+                  {userA.location?.city_or_place && (
+                    <p className="text-[11px] text-pink-300 flex items-center gap-1 mt-0.5">
+                      <span>📍 Location: {userA.location.city_or_place}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -322,6 +327,11 @@ export const PartnerTab: React.FC<PartnerTabProps> = ({
                     <Smile className="w-3.5 h-3.5" />
                     <span>Mood: {userB.mood}</span>
                   </p>
+                  {userB.location?.city_or_place && (
+                    <p className="text-[11px] text-purple-300 flex items-center gap-1 mt-0.5">
+                      <span>📍 Location: {userB.location.city_or_place}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
