@@ -79,6 +79,49 @@ Your task is to summarize user actions and partner interactions into a warm, cha
 Keep it sweet, playful, and empathetic to partners in a long-distance relationship.
 `;
 
+// API Endpoint: ImgBB Cloud Image Upload Proxy
+app.post("/api/upload-image", async (req, res) => {
+  try {
+    const { image, name } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: "No image payload provided" });
+    }
+
+    const apiKey = process.env.IMGBB_API_KEY || "7d62ac61cd4d1c7049cd5a8aa645a610";
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+
+    const formData = new URLSearchParams();
+    formData.append("image", base64Data);
+    if (name) formData.append("name", name);
+
+    const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData.toString(),
+    });
+
+    const data = await imgbbRes.json();
+    if (data && data.success && data.data && data.data.url) {
+      return res.json({
+        success: true,
+        url: data.data.url,
+        display_url: data.data.display_url || data.data.url,
+        delete_url: data.data.delete_url,
+      });
+    } else {
+      console.error("ImgBB upload API error response:", data);
+      return res.status(500).json({
+        error: data?.error?.message || "Failed to upload image to ImgBB",
+      });
+    }
+  } catch (err: any) {
+    console.error("Error in /api/upload-image:", err);
+    return res.status(500).json({ error: err?.message || "Internal server error during image upload" });
+  }
+});
+
 // API Endpoint: Get Current State
 app.get("/api/orbit/state", (req, res) => {
   // Always update countdown to ensure precision

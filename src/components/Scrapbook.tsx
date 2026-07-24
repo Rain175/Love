@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
-import { Image, Plus, Calendar, X, Sparkles, Upload, Check, Loader2, ArrowDown } from "lucide-react";
-import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
+import { Image, Plus, Calendar, X, Sparkles, Upload, Check, Loader2, ArrowDown, CloudUpload } from "lucide-react";
+import { formatBytes } from "../utils/imageCompressor";
+import { uploadToImgBB } from "../utils/imgbb";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -34,38 +35,59 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     ? items.filter((item) => item.tags?.includes(activeTagFilter))
     : items;
 
+  const [uploadStatusStage, setUploadStatusStage] = useState<string>("Compressing & Uploading to ImgBB...");
+
   const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsCompressing(true);
     setCompressionNotice(null);
+    setUploadStatusStage("Compressing photo (under 1 MB) & uploading to ImgBB Cloud...");
 
     try {
-      const result = await compressImageIfNeeded(file, 1.0);
-      setUploadedFilePreview(result.dataUrl);
+      const result = await uploadToImgBB(file, (stage) => {
+        if (stage === "compressing") setUploadStatusStage("Compressing photo (< 1 MB)...");
+        if (stage === "uploading") setUploadStatusStage("Uploading to ImgBB Cloud...");
+      });
 
-      if (result.wasCompressed) {
-        setCompressionNotice(
-          `Photo was larger than 1 MB (${formatBytes(result.originalSize)}). Auto-compressed to ${formatBytes(result.compressedSize)}!`
-        );
+      if (result.success && result.url) {
+        setUploadedFilePreview(result.url);
+        if (result.wasCompressed) {
+          setCompressionNotice(
+            `Auto-compressed (${formatBytes(result.originalSize || 0)} → ${formatBytes(result.compressedSize || 0)}) & uploaded to ImgBB!`
+          );
+        } else {
+          setCompressionNotice(`Uploaded to ImgBB Cloud (${formatBytes(result.originalSize || 0)})!`);
+        }
       } else {
-        setCompressionNotice(
-          `Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`
-        );
+        setCompressionNotice(`Upload failed: ${result.error || "Could not upload to ImgBB"}`);
       }
     } catch (err) {
-      console.error("Failed to compress photo:", err);
+      console.error("Failed to upload photo to ImgBB:", err);
+      setCompressionNotice("Failed to upload image.");
     } finally {
       setIsCompressing(false);
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!caption.trim()) return;
 
-    const finalUrl = uploadedFilePreview || customPhotoInput.trim() || "";
+    let finalUrl = uploadedFilePreview || customPhotoInput.trim() || "";
+    
+    // If user pasted a base64 string in customPhotoInput, upload it to ImgBB too
+    if (finalUrl.startsWith("data:image")) {
+      setIsCompressing(true);
+      setUploadStatusStage("Uploading image to ImgBB Cloud...");
+      const result = await uploadToImgBB(finalUrl);
+      if (result.success && result.url) {
+        finalUrl = result.url;
+      }
+      setIsCompressing(false);
+    }
+
     const tagsArray = tagInput
       .split(",")
       .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
@@ -255,7 +277,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                 {isCompressing && (
                   <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center gap-2 text-xs text-sky-300 animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
-                    <span>Compressing image to under 1 MB...</span>
+                    <span>{uploadStatusStage}</span>
                   </div>
                 )}
 
@@ -269,8 +291,8 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                 {uploadedFilePreview && !isCompressing && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-sky-400 mt-2">
                     <img src={uploadedFilePreview} alt="Phone Upload Preview" className="w-full h-full object-cover" />
-                    <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Photo Loaded & Compressed
+                    <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                      <CloudUpload className="w-3 h-3" /> Hosted on ImgBB
                     </span>
                   </div>
                 )}

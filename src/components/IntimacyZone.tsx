@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
-import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2, Check } from "lucide-react";
-import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
+import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2, Check, CloudUpload } from "lucide-react";
+import { formatBytes } from "../utils/imageCompressor";
+import { uploadToImgBB } from "../utils/imgbb";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -27,38 +28,57 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [compressionNotice, setCompressionNotice] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
+  const [uploadStatusStage, setUploadStatusStage] = useState<string>("Compressing & Uploading to ImgBB...");
+
   const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsCompressing(true);
     setCompressionNotice(null);
+    setUploadStatusStage("Compressing secret photo (under 1 MB) & uploading to ImgBB Cloud...");
 
     try {
-      const result = await compressImageIfNeeded(file, 1.0);
-      setUploadedFilePreview(result.dataUrl);
+      const result = await uploadToImgBB(file, (stage) => {
+        if (stage === "compressing") setUploadStatusStage("Compressing photo (< 1 MB)...");
+        if (stage === "uploading") setUploadStatusStage("Uploading to ImgBB Cloud Vault...");
+      });
 
-      if (result.wasCompressed) {
-        setCompressionNotice(
-          `Compressed secret photo from ${formatBytes(result.originalSize)} to ${formatBytes(result.compressedSize)} (< 1MB)!`
-        );
+      if (result.success && result.url) {
+        setUploadedFilePreview(result.url);
+        if (result.wasCompressed) {
+          setCompressionNotice(
+            `Auto-compressed (${formatBytes(result.originalSize || 0)} → ${formatBytes(result.compressedSize || 0)}) & saved to ImgBB Vault!`
+          );
+        } else {
+          setCompressionNotice(`Saved to ImgBB Cloud Vault (${formatBytes(result.originalSize || 0)})!`);
+        }
       } else {
-        setCompressionNotice(
-          `Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`
-        );
+        setCompressionNotice(`Upload error: ${result.error || "Could not upload to ImgBB"}`);
       }
     } catch (err) {
-      console.error("Failed to compress secret photo:", err);
+      console.error("Failed to upload secret photo to ImgBB:", err);
+      setCompressionNotice("Failed to upload secret photo.");
     } finally {
       setIsCompressing(false);
     }
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const finalImage = uploadedFilePreview || customPhotoInput.trim() || "";
+    let finalImage = uploadedFilePreview || customPhotoInput.trim() || "";
+
+    if (finalImage.startsWith("data:image")) {
+      setIsCompressing(true);
+      setUploadStatusStage("Uploading secret photo to ImgBB Cloud...");
+      const result = await uploadToImgBB(finalImage);
+      if (result.success && result.url) {
+        finalImage = result.url;
+      }
+      setIsCompressing(false);
+    }
 
     onAddIntimacyItem(newTitle.trim(), secretMessage.trim(), finalImage);
     setNewTitle("");
@@ -259,7 +279,7 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 {isCompressing && (
                   <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-2 text-xs text-purple-300 animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    <span>Compressing secret photo (under 1 MB)...</span>
+                    <span>{uploadStatusStage}</span>
                   </div>
                 )}
 
@@ -273,6 +293,9 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 {uploadedFilePreview && !isCompressing && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-purple-400 mt-2">
                     <img src={uploadedFilePreview} alt="Secret Upload Preview" className="w-full h-full object-cover" />
+                    <span className="absolute top-1.5 left-1.5 bg-purple-600/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                      <CloudUpload className="w-3 h-3" /> Encrypted & Hosted on ImgBB
+                    </span>
                   </div>
                 )}
               </div>

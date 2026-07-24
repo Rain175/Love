@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
-import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon, Loader2, Check } from "lucide-react";
-import { compressImageIfNeeded, formatBytes } from "../utils/imageCompressor";
+import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon, Loader2, Check, CloudUpload } from "lucide-react";
+import { formatBytes } from "../utils/imageCompressor";
+import { uploadToImgBB } from "../utils/imgbb";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -53,24 +54,38 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setNotice(null);
 
     try {
-      const result = await compressImageIfNeeded(file, 1.0);
-      setPreview(result.dataUrl);
-
-      if (result.wasCompressed) {
-        setNotice(`Compressed from ${formatBytes(result.originalSize)} to ${formatBytes(result.compressedSize)} (< 1MB)!`);
+      const result = await uploadToImgBB(file);
+      if (result.success && result.url) {
+        setPreview(result.url);
+        if (result.wasCompressed) {
+          setNotice(`Auto-compressed (${formatBytes(result.originalSize || 0)} → ${formatBytes(result.compressedSize || 0)}) & uploaded to ImgBB!`);
+        } else {
+          setNotice(`Uploaded to ImgBB Cloud (${formatBytes(result.originalSize || 0)})!`);
+        }
       } else {
-        setNotice(`Photo size: ${formatBytes(result.originalSize)} (Under 1 MB threshold)`);
+        setNotice(`Upload error: ${result.error || "Could not upload to ImgBB"}`);
       }
     } catch (err) {
-      console.error("Image compression error:", err);
+      console.error("Image upload error:", err);
+      setNotice("Failed to upload photo.");
     } finally {
       setIsCompressing(false);
     }
   };
 
-  const handleCreateRequest = (e: React.FormEvent) => {
+  const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = uploadedPreview || newPhotoUrl.trim() || "";
+    let finalImage = uploadedPreview || newPhotoUrl.trim() || "";
+
+    if (finalImage.startsWith("data:image")) {
+      setIsCompressingReq(true);
+      const result = await uploadToImgBB(finalImage);
+      if (result.success && result.url) {
+        finalImage = result.url;
+      }
+      setIsCompressingReq(false);
+    }
+
     onRequestPhotoBooth(finalImage, newCaption.trim() || undefined);
     setNewPhotoUrl("");
     setNewCaption("");
@@ -79,9 +94,19 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setIsNewRequestModalOpen(false);
   };
 
-  const handleCompleteSubmit = (requestId: string, e: React.FormEvent) => {
+  const handleCompleteSubmit = async (requestId: string, e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = responseUploadedPreview || responsePhotoUrl.trim() || "";
+    let finalImage = responseUploadedPreview || responsePhotoUrl.trim() || "";
+
+    if (finalImage.startsWith("data:image")) {
+      setIsCompressingRes(true);
+      const result = await uploadToImgBB(finalImage);
+      if (result.success && result.url) {
+        finalImage = result.url;
+      }
+      setIsCompressingRes(false);
+    }
+
     onCompletePhotoBooth(requestId, finalImage);
     setCompletingRequestId(null);
     setResponsePhotoUrl("");
@@ -363,6 +388,9 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 {uploadedPreview && (
                   <div className="relative aspect-square w-32 mx-auto rounded-xl overflow-hidden border border-pink-400 mt-2">
                     <img src={uploadedPreview} alt="Frame 1 Preview" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-pink-600/90 text-white font-bold text-[8px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow whitespace-nowrap">
+                      <CloudUpload className="w-3 h-3" /> Hosted on ImgBB
+                    </span>
                   </div>
                 )}
               </div>
