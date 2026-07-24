@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
 import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon } from "lucide-react";
-import { compressImageIfNeeded } from "../utils/photoCompressor";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -34,20 +33,14 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const pendingOutgoing = requests.find((r) => r.status === "pending" && r.requester === activeUser);
   const completedStrips = requests.filter((r) => r.status === "completed");
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, setPreview: (val: string | null) => void) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setPreview: (val: string | null) => void) => {
     const file = e.target.files?.[0];
     if (file) {
-      try {
-        const compressedBase64 = await compressImageIfNeeded(file);
-        setPreview(compressedBase64);
-      } catch (err) {
-        console.error("Error compressing image:", err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 

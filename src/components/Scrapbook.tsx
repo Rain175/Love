@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
 import { Image, Plus, Calendar, X, Sparkles, Upload, Check } from "lucide-react";
-import { compressImageIfNeeded } from "../utils/photoCompressor";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -32,21 +31,15 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     ? items.filter((item) => item.tags?.includes(activeTagFilter))
     : items;
 
-  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      try {
-        const compressedBase64 = await compressImageIfNeeded(file);
-        setUploadedFilePreview(compressedBase64);
-      } catch (err) {
-        console.error("Error compressing image:", err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          setUploadedFilePreview(result);
-        };
-        reader.readAsDataURL(file);
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setUploadedFilePreview(result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 

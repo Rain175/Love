@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
 import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart } from "lucide-react";
-import { compressImageIfNeeded } from "../utils/photoCompressor";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -25,20 +24,14 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
-  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      try {
-        const compressedBase64 = await compressImageIfNeeded(file);
-        setUploadedFilePreview(compressedBase64);
-      } catch (err) {
-        console.error("Error compressing image:", err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setUploadedFilePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedFilePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
