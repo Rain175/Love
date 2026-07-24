@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
 import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon, Loader2 } from "lucide-react";
-import { uploadFileToStorage } from "../lib/firebase";
+import { compressImage } from "../utils/imageCompressor";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -49,16 +49,11 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
       setLoading(true);
       setError(null);
       try {
-        const downloadUrl = await uploadFileToStorage(file, "photobooth");
-        setPreview(downloadUrl);
+        const compressedBase64 = await compressImage(file, 1024, 0.7);
+        setPreview(compressedBase64);
       } catch (err: any) {
-        console.error("Storage upload failed, falling back to FileReader:", err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-        setError("Could not upload to Firebase Storage, fell back to local memory.");
+        console.error("Image compression failed:", err);
+        setError("Could not process and compress this photo. Please try another one.");
       } finally {
         setLoading(false);
       }
@@ -193,7 +188,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   {isRespondingUploading && (
                     <div className="flex items-center gap-2 text-xs text-pink-300 py-1 font-medium">
                       <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
-                      <span>Uploading to Firebase Cloud Storage...</span>
+                      <span>Compressing & optimizing photo...</span>
                     </div>
                   )}
 
@@ -206,7 +201,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   {responseUploadedPreview && !isRespondingUploading && (
                     <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1 mt-1">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Photo saved to Firebase Storage!</span>
+                      <span>Photo processed and optimized!</span>
                     </div>
                   )}
                 </div>
@@ -364,7 +359,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 {isUploading && (
                   <div className="flex items-center gap-2 text-xs text-pink-300 py-1 font-medium">
                     <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
-                    <span>Uploading to Firebase Cloud Storage...</span>
+                    <span>Compressing & optimizing photo...</span>
                   </div>
                 )}
 
@@ -378,7 +373,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   <div className="relative aspect-square w-32 mx-auto rounded-xl overflow-hidden border border-pink-400 mt-2">
                     <img src={uploadedPreview} alt="Frame 1 Preview" className="w-full h-full object-cover" />
                     <span className="absolute top-1 left-1 bg-emerald-500/90 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                      <CheckCircle2 className="w-3 h-3" /> Saved to Storage
+                      <CheckCircle2 className="w-3 h-3" /> Photo Optimized
                     </span>
                   </div>
                 )}

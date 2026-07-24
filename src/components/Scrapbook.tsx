@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
 import { Image, Plus, Calendar, X, Sparkles, Upload, Check, Loader2 } from "lucide-react";
-import { uploadFileToStorage } from "../lib/firebase";
+import { compressImage } from "../utils/imageCompressor";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -40,17 +40,11 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
       setIsUploading(true);
       setUploadError(null);
       try {
-        const downloadUrl = await uploadFileToStorage(file, "scrapbook");
-        setUploadedFilePreview(downloadUrl);
+        const compressedBase64 = await compressImage(file, 1024, 0.7);
+        setUploadedFilePreview(compressedBase64);
       } catch (err: any) {
-        console.error("Storage upload failed, falling back to FileReader:", err);
-        // Let's fallback gracefully to local reader if storage fails
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setUploadedFilePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-        setUploadError("Could not upload to Firebase Storage, fell back to local memory.");
+        console.error("Image compression failed:", err);
+        setUploadError("Could not process and compress this photo. Please try another one.");
       } finally {
         setIsUploading(false);
       }
@@ -250,7 +244,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                 {isUploading && (
                   <div className="flex items-center gap-2 text-xs text-sky-300 py-1 font-medium">
                     <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
-                    <span>Uploading photo to Firebase Cloud Storage...</span>
+                    <span>Compressing & optimizing photo...</span>
                   </div>
                 )}
 
@@ -264,7 +258,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-sky-400 mt-2">
                     <img src={uploadedFilePreview} alt="Phone Upload Preview" className="w-full h-full object-cover" />
                     <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Photo Saved to Firebase Storage
+                      <Check className="w-3 h-3" /> Photo Compressed & Loaded
                     </span>
                   </div>
                 )}

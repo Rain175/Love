@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
 import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2 } from "lucide-react";
-import { uploadFileToStorage } from "../lib/firebase";
+import { compressImage } from "../utils/imageCompressor";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -33,16 +33,11 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
       setIsUploading(true);
       setUploadError(null);
       try {
-        const downloadUrl = await uploadFileToStorage(file, "intimacy");
-        setUploadedFilePreview(downloadUrl);
+        const compressedBase64 = await compressImage(file, 1024, 0.7);
+        setUploadedFilePreview(compressedBase64);
       } catch (err: any) {
-        console.error("Storage upload failed, falling back to FileReader:", err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setUploadedFilePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-        setUploadError("Could not upload to Firebase Storage, fell back to local memory.");
+        console.error("Image compression failed:", err);
+        setUploadError("Could not process and compress this photo. Please try another one.");
       } finally {
         setIsUploading(false);
       }
@@ -253,7 +248,7 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 {isUploading && (
                   <div className="flex items-center gap-2 text-xs text-purple-300 py-1 font-medium">
                     <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    <span>Uploading photo to Firebase Storage...</span>
+                    <span>Compressing & optimizing photo...</span>
                   </div>
                 )}
 
@@ -267,7 +262,7 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-purple-400 mt-2">
                     <img src={uploadedFilePreview} alt="Secret Upload Preview" className="w-full h-full object-cover" />
                     <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-white" /> Encrypted & Saved to Storage
+                      <CheckCircle2 className="w-3 h-3 text-white" /> Photo Optimized & Encrypted
                     </span>
                   </div>
                 )}
