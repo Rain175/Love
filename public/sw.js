@@ -10,7 +10,7 @@
 //   needing to bump CACHE_NAME or manually clear site data.
 
 const CACHE_NAME = 'orbit-cache-v2';
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon-512.png'];
+const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon.png'];
 
 // Install: pre-cache essential shell assets
 self.addEventListener('install', (event) => {
@@ -93,8 +93,8 @@ self.addEventListener('push', (event) => {
   const title = data.notification?.title || data.title || 'Orbit';
   const options = {
     body: data.notification?.body || data.body || '',
-    icon: '/icon-512.png',
-    badge: '/icon-512.png',
+    icon: '/icon.png',
+    badge: '/icon.png',
     data: { url: data.fcmOptions?.link || data.data?.url || '/' },
   };
 
