@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
-import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2 } from "lucide-react";
-import { compressImage } from "../utils/imageCompressor";
+import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart } from "lucide-react";
+import { compressImageIfNeeded } from "../utils/photoCompressor";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -23,23 +23,21 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [secretMessage, setSecretMessage] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
   const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsUploading(true);
-      setUploadError(null);
       try {
-        const compressedBase64 = await compressImage(file, 1024, 0.7);
+        const compressedBase64 = await compressImageIfNeeded(file);
         setUploadedFilePreview(compressedBase64);
-      } catch (err: any) {
-        console.error("Image compression failed:", err);
-        setUploadError("Could not process and compress this photo. Please try another one.");
-      } finally {
-        setIsUploading(false);
+      } catch (err) {
+        console.error("Error compressing image:", err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUploadedFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       }
     }
   };
@@ -241,34 +239,16 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                   type="file"
                   accept="image/*"
                   onChange={handlePhoneFileUpload}
-                  disabled={isUploading}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer disabled:opacity-55"
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer"
                 />
-
-                {isUploading && (
-                  <div className="flex items-center gap-2 text-xs text-purple-300 py-1 font-medium">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    <span>Compressing & optimizing photo...</span>
-                  </div>
-                )}
-
-                {uploadError && (
-                  <div className="text-xs text-rose-400 font-semibold mt-1">
-                    {uploadError}
-                  </div>
-                )}
-
-                {uploadedFilePreview && !isUploading && (
+                {uploadedFilePreview && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-purple-400 mt-2">
                     <img src={uploadedFilePreview} alt="Secret Upload Preview" className="w-full h-full object-cover" />
-                    <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-white" /> Photo Optimized & Encrypted
-                    </span>
                   </div>
                 )}
               </div>
 
-              {!uploadedFilePreview && !isUploading && (
+              {!uploadedFilePreview && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Or Image URL (Optional)
@@ -302,17 +282,10 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || isUploading || !newTitle.trim()}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  disabled={isLoading || !newTitle.trim()}
+                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold rounded-xl shadow-lg"
                 >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Uploading...</span>
-                    </>
-                  ) : (
-                    <span>Encrypt & Save Vault</span>
-                  )}
+                  Encrypt & Save Vault
                 </button>
               </div>
             </form>
