@@ -2,6 +2,8 @@ const CACHE_NAME = 'orbit-cache-v1';
 const ASSETS = [
   '/',
   '/index.html',
+  '/icon-192.png',
+  '/icon-512.png',
   '/icon.png',
   '/manifest.json'
 ];
