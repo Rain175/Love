@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, setLogLevel } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import imageCompression from "browser-image-compression";
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
 setLogLevel("error");
@@ -93,4 +94,30 @@ export function sanitizeForFirestore<T>(obj: T): T {
   return sanitized as T;
 }
 
-
+// Compress image client-side to fit safely in Firestore, then store as data URL.
+// A base64 data URL adds ~33% overhead, so we target ~600KB before encoding to
+// stay well under Firestore's 1 MiB per-document limit.
+export async function compressImageDataUrl(
+  dataUrl: string,
+  maxSizeBytes: number = 600000
+): Promise<string> {
+  // Convert data URL to Blob
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  
+  const options = {
+    maxSizeMB: maxSizeBytes / (1024 * 1024),
+    maxWidthOrHeight: 1024,
+    useWebWorker: true,
+  };
+  
+  const compressedBlob = await imageCompression.compress(blob, options);
+  
+  // Convert back to data URL
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(compressedBlob);
+  });
+}

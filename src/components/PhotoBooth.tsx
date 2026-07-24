@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
 import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon } from "lucide-react";
+import { compressImageDataUrl } from "../lib/firebase";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -23,6 +24,7 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [newCaption, setNewCaption] = useState("");
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Response state for completing a request
   const [completingRequestId, setCompletingRequestId] = useState<string | null>(null);
@@ -44,9 +46,19 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
   };
 
-  const handleCreateRequest = (e: React.FormEvent) => {
+  const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = uploadedPreview || newPhotoUrl.trim() || "";
+    let finalImage = newPhotoUrl.trim() || "";
+    if (uploadedPreview) {
+      setIsUploading(true);
+      try {
+        finalImage = await compressImageDataUrl(uploadedPreview);
+      } catch (err) {
+        console.error("Error compressing image:", err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
     onRequestPhotoBooth(finalImage, newCaption.trim() || undefined);
     setNewPhotoUrl("");
     setNewCaption("");
@@ -54,9 +66,19 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setIsNewRequestModalOpen(false);
   };
 
-  const handleCompleteSubmit = (requestId: string, e: React.FormEvent) => {
+  const handleCompleteSubmit = async (requestId: string, e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = responseUploadedPreview || responsePhotoUrl.trim() || "";
+    let finalImage = responsePhotoUrl.trim() || "";
+    if (responseUploadedPreview) {
+      setIsUploading(true);
+      try {
+        finalImage = await compressImageDataUrl(responseUploadedPreview);
+      } catch (err) {
+        console.error("Error compressing image:", err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
     onCompletePhotoBooth(requestId, finalImage);
     setCompletingRequestId(null);
     setResponsePhotoUrl("");

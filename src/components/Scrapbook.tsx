@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
 import { Image, Plus, Calendar, X, Sparkles, Upload, Check } from "lucide-react";
+import { compressImageDataUrl } from "../lib/firebase";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -19,6 +20,7 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
   const [caption, setCaption] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<ScrapbookItem | null>(null);
@@ -43,11 +45,22 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!caption.trim()) return;
 
-    const finalUrl = uploadedFilePreview || customPhotoInput.trim() || "";
+    let finalUrl = customPhotoInput.trim() || "";
+    if (uploadedFilePreview) {
+      setIsUploading(true);
+      try {
+        finalUrl = await compressImageDataUrl(uploadedFilePreview);
+      } catch (err) {
+        console.error("Error compressing image:", err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     const tagsArray = tagInput
       .split(",")
       .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
