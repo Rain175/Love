@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, sanitizeForFirestore } from "./lib/firebase";
 import { OrbitState, UserRole, ActionPayload, MinigameType } from "./types";
 import { initialOrbitState } from "./data/initialState";
@@ -23,16 +23,6 @@ import { Heart, Camera, BookOpen } from "lucide-react";
 export default function App() {
   const [state, setState] = useState<OrbitState>(initialOrbitState);
   const [activeUser, setActiveUser] = useState<UserRole>("User_A");
-
-  // Always-current ref mirror of `state`. The 15s depletion interval below lives
-  // for a while between re-creations (it only rebuilds when roomCode/tamagotchi
-  // change), so reading `state` directly inside it can capture a STALE snapshot —
-  // missing scrapbook/photobooth items added since. Reading `stateRef.current`
-  // instead guarantees the interval always sees the latest data before writing.
-  const stateRef = useRef(state);
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
   
   // Clash Royale style navigation tabs: "partner" | "memories" | "pet" | "vault" | "letters"
   // Default to middle tab: "pet" (Tamagotchi Sprout Care Hub)
@@ -258,28 +248,13 @@ export default function App() {
     if (!roomCode || !state.tamagotchi) return;
 
     const interval = setInterval(() => {
-      // Read from the ref, NOT the closed-over `state`, so this always operates
-      // on the latest data even if this effect hasn't been recreated recently.
-      const currentState = stateRef.current;
-      const { updated, tamagotchi: depletedTamagotchi } = applyDepletion(currentState.tamagotchi);
+      const { updated, tamagotchi: depletedTamagotchi } = applyDepletion(state.tamagotchi);
       if (updated) {
-        // Update local state for immediate UI feedback.
-        setState((prev) => ({ ...prev, tamagotchi: depletedTamagotchi }));
-
-        if (roomCode) {
-          localStorage.setItem(
-            `orbit_room_data_${roomCode}`,
-            JSON.stringify({ ...currentState, tamagotchi: depletedTamagotchi })
-          );
-          // Write ONLY the tamagotchi field via updateDoc (dot-path partial write)
-          // instead of setDoc-ing the whole state object. This makes it impossible
-          // for this background tick to ever clobber scrapbook/photobooth/letters/
-          // intimacy_zone data, no matter how stale any other part of local state is.
-          const roomRef = doc(db, "orbit_rooms", roomCode);
-          updateDoc(roomRef, { tamagotchi: depletedTamagotchi }).catch((err) => {
-            console.warn("Failed to sync tamagotchi depletion tick:", err);
-          });
-        }
+        const updatedState = {
+          ...state,
+          tamagotchi: depletedTamagotchi,
+        };
+        syncStateUpdate(updatedState);
       }
     }, 15000);
 

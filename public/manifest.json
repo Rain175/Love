@@ -1,23 +1,35 @@
 {
-  "name": "Orbit — Couple's Companion",
+  "id": "/",
+  "name": "Orbit - Couple's Companion",
   "short_name": "Orbit",
-  "description": "Orbit — Couple's Companion",
+  "description": "Private long-distance couple's app with shared Tamagotchi companion, reunion countdown, collaborative scrapbook, open-when letters, and mood sync.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f0f1a",
+  "background_color": "#0f172a",
   "theme_color": "#ec4899",
-  "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
