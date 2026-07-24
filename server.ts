@@ -5,6 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import { OrbitState, ActionPayload, ChatMessageUpdate } from "./src/types";
 import { calculateCountdown, TARGET_REUNION_DATE } from "./src/utils/countdown";
 import { initialOrbitState } from "./src/data/initialState";
+import { applyDepletion } from "./src/utils/tamagotchi";
 
 const app = express();
 const PORT = 3000;
@@ -82,6 +83,9 @@ Keep it sweet, playful, and empathetic to partners in a long-distance relationsh
 app.get("/api/orbit/state", (req, res) => {
   // Always update countdown to ensure precision
   currentState.countdown = calculateCountdown(TARGET_REUNION_DATE);
+  // Apply catch-up depletion
+  const { tamagotchi: depleted } = applyDepletion(currentState.tamagotchi);
+  currentState.tamagotchi = depleted;
   currentState.timestamp = new Date().toISOString();
   res.json(currentState);
 });
@@ -92,6 +96,10 @@ app.post("/api/orbit/action", async (req, res) => {
   if (req.body.current_state) {
     currentState = { ...currentState, ...req.body.current_state };
   }
+  // Apply catch-up depletion
+  const { tamagotchi: depleted } = applyDepletion(currentState.tamagotchi);
+  currentState.tamagotchi = depleted;
+
   const activeUser = payload.active_user || "User_A";
   const userKey = activeUser === "User_A" ? "user_a" : "user_b";
   const partnerName = currentState.users?.[userKey]?.name || (activeUser === "User_A" ? "Nithilan" : "Sofia");

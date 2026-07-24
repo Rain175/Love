@@ -26,6 +26,7 @@ export interface TamagotchiState {
   last_fed?: string;
   last_played?: string;
   selected_skin?: "sprout" | "dark_hoodie" | "kiss_hoodie" | string;
+  last_updated?: string;
 }
 
 export interface ScrapbookItem {

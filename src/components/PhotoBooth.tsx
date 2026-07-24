@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { PhotoBoothRequest, UserRole } from "../types";
-import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon } from "lucide-react";
+import { Camera, Sparkles, Clock, CheckCircle2, Upload, Plus, Heart, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { uploadFileToStorage } from "../lib/firebase";
 
 interface PhotoBoothProps {
   requests: PhotoBoothRequest[];
@@ -23,25 +24,45 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [newCaption, setNewCaption] = useState("");
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Response state for completing a request
   const [completingRequestId, setCompletingRequestId] = useState<string | null>(null);
   const [responsePhotoUrl, setResponsePhotoUrl] = useState("");
   const [responseUploadedPreview, setResponseUploadedPreview] = useState<string | null>(null);
+  const [isRespondingUploading, setIsRespondingUploading] = useState(false);
+  const [responseUploadError, setResponseUploadError] = useState<string | null>(null);
 
   const pendingIncoming = requests.find((r) => r.status === "pending" && r.requester !== activeUser);
   const pendingOutgoing = requests.find((r) => r.status === "pending" && r.requester === activeUser);
   const completedStrips = requests.filter((r) => r.status === "completed");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setPreview: (val: string | null) => void) => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setPreview: (val: string | null) => void,
+    setLoading: (val: boolean) => void,
+    setError: (val: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+      setLoading(true);
+      setError(null);
+      try {
+        const downloadUrl = await uploadFileToStorage(file, "photobooth");
+        setPreview(downloadUrl);
+      } catch (err: any) {
+        console.error("Storage upload failed, falling back to FileReader:", err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setError("Could not upload to Firebase Storage, fell back to local memory.");
+      } finally {
+        setLoading(false);
+      }
+    };
   };
 
   const handleCreateRequest = (e: React.FormEvent) => {
@@ -164,12 +185,33 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => handleFileUpload(e, setResponseUploadedPreview)}
-                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer"
+                    onChange={(e) => handleFileUpload(e, setResponseUploadedPreview, setIsRespondingUploading, setResponseUploadError)}
+                    disabled={isRespondingUploading}
+                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer disabled:opacity-55"
                   />
+
+                  {isRespondingUploading && (
+                    <div className="flex items-center gap-2 text-xs text-pink-300 py-1 font-medium">
+                      <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
+                      <span>Uploading to Firebase Cloud Storage...</span>
+                    </div>
+                  )}
+
+                  {responseUploadError && (
+                    <div className="text-xs text-rose-400 font-semibold mt-1">
+                      {responseUploadError}
+                    </div>
+                  )}
+
+                  {responseUploadedPreview && !isRespondingUploading && (
+                    <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1 mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Photo saved to Firebase Storage!</span>
+                    </div>
+                  )}
                 </div>
 
-                {!responseUploadedPreview && (
+                {!responseUploadedPreview && !isRespondingUploading && (
                   <div>
                     <label className="block text-xs text-slate-300 mb-1">Or Image URL</label>
                     <input
@@ -184,11 +226,20 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2"
+                  disabled={isLoading || isRespondingUploading}
+                  className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Complete & Save Photobooth Strip!</span>
+                  {isRespondingUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Uploading Photo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Complete & Save Photobooth Strip!</span>
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -305,17 +356,35 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, setUploadedPreview)}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer"
+                  onChange={(e) => handleFileUpload(e, setUploadedPreview, setIsUploading, setUploadError)}
+                  disabled={isUploading}
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-300 file:border file:border-pink-500/30 hover:file:bg-pink-500/30 cursor-pointer disabled:opacity-55"
                 />
-                {uploadedPreview && (
+
+                {isUploading && (
+                  <div className="flex items-center gap-2 text-xs text-pink-300 py-1 font-medium">
+                    <Loader2 className="w-4 h-4 animate-spin text-pink-400" />
+                    <span>Uploading to Firebase Cloud Storage...</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="text-xs text-rose-400 font-semibold mt-1">
+                    {uploadError}
+                  </div>
+                )}
+
+                {uploadedPreview && !isUploading && (
                   <div className="relative aspect-square w-32 mx-auto rounded-xl overflow-hidden border border-pink-400 mt-2">
                     <img src={uploadedPreview} alt="Frame 1 Preview" className="w-full h-full object-cover" />
+                    <span className="absolute top-1 left-1 bg-emerald-500/90 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <CheckCircle2 className="w-3 h-3" /> Saved to Storage
+                    </span>
                   </div>
                 )}
               </div>
 
-              {!uploadedPreview && (
+              {!uploadedPreview && !isUploading && (
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Or Photo Image URL</label>
                   <input
@@ -351,10 +420,17 @@ export const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="px-5 py-2 bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold rounded-xl shadow-lg"
+                  disabled={isLoading || isUploading}
+                  className="px-5 py-2 bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  Send Photobooth Request
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <span>Send Photobooth Request</span>
+                  )}
                 </button>
               </div>
             </form>

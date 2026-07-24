@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
-import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart } from "lucide-react";
+import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart, Loader2 } from "lucide-react";
+import { uploadFileToStorage } from "../lib/firebase";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -22,16 +23,29 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [secretMessage, setSecretMessage] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
-  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      setUploadError(null);
+      try {
+        const downloadUrl = await uploadFileToStorage(file, "intimacy");
+        setUploadedFilePreview(downloadUrl);
+      } catch (err: any) {
+        console.error("Storage upload failed, falling back to FileReader:", err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUploadedFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setUploadError("Could not upload to Firebase Storage, fell back to local memory.");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -232,16 +246,34 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                   type="file"
                   accept="image/*"
                   onChange={handlePhoneFileUpload}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer"
+                  disabled={isUploading}
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-500/20 file:text-purple-300 file:border file:border-purple-500/30 hover:file:bg-purple-500/30 cursor-pointer disabled:opacity-55"
                 />
-                {uploadedFilePreview && (
+
+                {isUploading && (
+                  <div className="flex items-center gap-2 text-xs text-purple-300 py-1 font-medium">
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                    <span>Uploading photo to Firebase Storage...</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="text-xs text-rose-400 font-semibold mt-1">
+                    {uploadError}
+                  </div>
+                )}
+
+                {uploadedFilePreview && !isUploading && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-purple-400 mt-2">
                     <img src={uploadedFilePreview} alt="Secret Upload Preview" className="w-full h-full object-cover" />
+                    <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-white" /> Encrypted & Saved to Storage
+                    </span>
                   </div>
                 )}
               </div>
 
-              {!uploadedFilePreview && (
+              {!uploadedFilePreview && !isUploading && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Or Image URL (Optional)
@@ -275,10 +307,17 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || !newTitle.trim()}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold rounded-xl shadow-lg"
+                  disabled={isLoading || isUploading || !newTitle.trim()}
+                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                 >
-                  Encrypt & Save Vault
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <span>Encrypt & Save Vault</span>
+                  )}
                 </button>
               </div>
             </form>

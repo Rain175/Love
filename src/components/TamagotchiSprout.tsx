@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TamagotchiState, UserRole, UserProfile, MinigameType } from "../types";
-import { Utensils, Smile, Zap, Heart, Sparkles, Gamepad2, Moon, Edit3, Check, HeartHandshake, UserCheck, Shirt, Palette, ShieldCheck } from "lucide-react";
+import { Utensils, Smile, Zap, Heart, Sparkles, Gamepad2, Moon, Edit3, Check, HeartHandshake, UserCheck, Shirt, Palette, ShieldCheck, Bell } from "lucide-react";
 import darkHoodieImg from "../assets/skins/dark_hoodie.jpg";
 import kissHoodieImg from "../assets/skins/kiss_hoodie.jpg";
 
@@ -71,6 +71,31 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
   const [selectedMood, setSelectedMood] = useState("");
   const [customStatusInput, setCustomStatusInput] = useState("");
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [notificationStatus, setNotificationStatus] = useState<string>(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
+  );
+
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    setNotificationStatus(result);
+    if (result === "granted") {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification("🌱 Sprout Alerts Active!", {
+            body: "You will now receive real-time alerts when Sprout is hungry or needs affection!",
+            icon: "/icon-192.png",
+            tag: "sprout-alert",
+          });
+        });
+      } else {
+        new Notification("🌱 Sprout Alerts Active!", {
+          body: "You will now receive real-time alerts when Sprout is hungry or needs affection!",
+          icon: "/icon-192.png",
+        });
+      }
+    }
+  };
 
   const me = activeUser === "User_A" ? userA : userB;
   const partner = activeUser === "User_A" ? userB : userA;
@@ -140,8 +165,24 @@ export const TamagotchiSprout: React.FC<TamagotchiSproutProps> = ({
         </div>
 
         {/* Action Controls Header */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {typeof window !== "undefined" && "Notification" in window && (
+            <button
+              type="button"
+              onClick={requestNotificationPermission}
+              className={`px-3.5 py-2 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
+                notificationStatus === "granted"
+                  ? "bg-emerald-500/20 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40"
+                  : "bg-pink-500/20 hover:bg-pink-500/25 text-pink-300 border-pink-500/40 animate-pulse"
+              }`}
+            >
+              <Bell className="w-4 h-4 text-pink-400" />
+              <span>{notificationStatus === "granted" ? "Push Alerts Active" : "Enable Push Alerts"}</span>
+            </button>
+          )}
+
           <button
+            type="button"
             onClick={() => setIsEditingMood(!isEditingMood)}
             className="px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
           >

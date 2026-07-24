@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrapbookItem, UserRole } from "../types";
-import { Image, Plus, Calendar, X, Sparkles, Upload, Check } from "lucide-react";
+import { Image, Plus, Calendar, X, Sparkles, Upload, Check, Loader2 } from "lucide-react";
+import { uploadFileToStorage } from "../lib/firebase";
 
 interface ScrapbookProps {
   items: ScrapbookItem[];
@@ -19,6 +20,8 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
   const [caption, setCaption] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<ScrapbookItem | null>(null);
@@ -31,15 +34,26 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
     ? items.filter((item) => item.tags?.includes(activeTagFilter))
     : items;
 
-  const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setUploadedFilePreview(result);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      setUploadError(null);
+      try {
+        const downloadUrl = await uploadFileToStorage(file, "scrapbook");
+        setUploadedFilePreview(downloadUrl);
+      } catch (err: any) {
+        console.error("Storage upload failed, falling back to FileReader:", err);
+        // Let's fallback gracefully to local reader if storage fails
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setUploadedFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setUploadError("Could not upload to Firebase Storage, fell back to local memory.");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -229,19 +243,34 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                   type="file"
                   accept="image/*"
                   onChange={handlePhoneFileUpload}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 file:border file:border-sky-500/30 hover:file:bg-sky-500/30 cursor-pointer"
+                  disabled={isUploading}
+                  className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 file:border file:border-sky-500/30 hover:file:bg-sky-500/30 cursor-pointer disabled:opacity-55"
                 />
-                {uploadedFilePreview && (
+
+                {isUploading && (
+                  <div className="flex items-center gap-2 text-xs text-sky-300 py-1 font-medium">
+                    <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+                    <span>Uploading photo to Firebase Cloud Storage...</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="text-xs text-rose-400 font-semibold mt-1">
+                    {uploadError}
+                  </div>
+                )}
+
+                {uploadedFilePreview && !isUploading && (
                   <div className="relative aspect-video rounded-xl overflow-hidden border border-sky-400 mt-2">
                     <img src={uploadedFilePreview} alt="Phone Upload Preview" className="w-full h-full object-cover" />
                     <span className="absolute top-1.5 left-1.5 bg-emerald-500/90 text-white font-bold text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Photo Loaded from Phone
+                      <Check className="w-3 h-3" /> Photo Saved to Firebase Storage
                     </span>
                   </div>
                 )}
               </div>
 
-              {!uploadedFilePreview && (
+              {!uploadedFilePreview && !isUploading && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Or Image URL
@@ -279,10 +308,17 @@ export const Scrapbook: React.FC<ScrapbookProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || !caption.trim()}
-                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-xl shadow-lg"
+                  disabled={isLoading || isUploading || !caption.trim()}
+                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                 >
-                  Save Memory
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <span>Save Memory</span>
+                  )}
                 </button>
               </div>
             </form>

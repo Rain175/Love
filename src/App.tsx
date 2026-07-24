@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, sanitizeForFirestore } from "./lib/firebase";
 import { OrbitState, UserRole, ActionPayload, MinigameType } from "./types";
 import { initialOrbitState } from "./data/initialState";
 import { calculateCountdown, TARGET_REUNION_DATE } from "./utils/countdown";
+import { applyDepletion } from "./utils/tamagotchi";
 import { Header } from "./components/Header";
 import { PartnerTab } from "./components/PartnerTab";
 import { TamagotchiSprout } from "./components/TamagotchiSprout";
@@ -39,6 +40,36 @@ export default function App() {
   // Minigame Modal (Optional Arcade Mode)
   const [activeMinigame, setActiveMinigame] = useState<MinigameType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Notification limits and helper
+  const notifiedRef = useRef({
+    hunger: false,
+    happiness: false,
+    energy: false,
+    lastTimestamp: "",
+  });
+
+  const sendNotification = (title: string, body: string, icon = "/icon-192.png") => {
+    if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
+
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(title, {
+          body,
+          icon,
+          badge: icon,
+          vibrate: [200, 100, 200],
+          tag: "sprout-alert",
+          renotify: true,
+        } as any);
+      }).catch(err => {
+        console.warn("Service worker notification error, falling back:", err);
+        new Notification(title, { body, icon });
+      });
+    } else {
+      new Notification(title, { body, icon });
+    }
+  };
 
   // Derive active partner profile
   const partnerUserKey = activeUser === "User_A" ? "user_b" : "user_a";
@@ -92,7 +123,7 @@ export default function App() {
     return () => unsubscribe();
   }, [activeUser]);
 
-  // 2. Real-time Firestore Sync Listener for active room
+  // 2. Real-time Firestore Sync Listener for active room with catch-up depletion
   useEffect(() => {
     if (!roomCode) return;
 
@@ -104,6 +135,9 @@ export default function App() {
           const roomData = docSnap.data() as OrbitState;
           const targetDate = roomData.countdown?.target_date || TARGET_REUNION_DATE;
 
+          // Catch-up depletion on incoming Firestore data
+          const { updated, tamagotchi: depletedTamagotchi } = applyDepletion(roomData.tamagotchi);
+
           // Lock active user role based on authenticated Firebase UID
           if (user?.uid) {
             if (roomData.users?.user_b?.uid === user.uid) {
@@ -113,11 +147,21 @@ export default function App() {
             }
           }
 
-          setState({
+          const finalRoomState: OrbitState = {
             ...roomData,
+            tamagotchi: depletedTamagotchi,
             roomCode,
             countdown: calculateCountdown(targetDate),
-          });
+          };
+
+          setState(finalRoomState);
+
+          // If catch-up depletion happened, write back immediately to sync both partners
+          if (updated) {
+            setDoc(roomRef, sanitizeForFirestore(finalRoomState), { merge: true }).catch((err) => {
+              console.warn("Failed to auto-sync catch-up depletion:", err);
+            });
+          }
         } else {
           const newRoomState: OrbitState = {
             ...initialOrbitState,
@@ -136,6 +180,86 @@ export default function App() {
 
     return () => unsubscribe();
   }, [roomCode, user?.uid]);
+
+  // 3. Notification triggers for low stats and partner activity
+  useEffect(() => {
+    if (!state.tamagotchi || !state.timestamp) return;
+
+    // A. Check stats levels
+    const hunger = state.tamagotchi.hunger;
+    const happiness = state.tamagotchi.happiness;
+    const energy = state.tamagotchi.energy;
+
+    if (hunger < 30) {
+      if (!notifiedRef.current.hunger) {
+        sendNotification(
+          "🌱 Sprout is Hungry!",
+          `${state.tamagotchi.name} is hungry (${Math.round(hunger)}%). Please feed Sprout a warm meal!`
+        );
+        notifiedRef.current.hunger = true;
+      }
+    } else if (hunger >= 40) {
+      notifiedRef.current.hunger = false;
+    }
+
+    if (happiness < 30) {
+      if (!notifiedRef.current.happiness) {
+        sendNotification(
+          "💖 Sprout feels lonely!",
+          `${state.tamagotchi.name} needs affection (${Math.round(happiness)}%). Give Sprout some cuddles or play a game!`
+        );
+        notifiedRef.current.happiness = true;
+      }
+    } else if (happiness >= 40) {
+      notifiedRef.current.happiness = false;
+    }
+
+    if (energy < 30) {
+      if (!notifiedRef.current.energy) {
+        sendNotification(
+          "💤 Sprout is sleepy!",
+          `${state.tamagotchi.name} is exhausted (${Math.round(energy)}%). Tuck Sprout in for a cozy nap!`
+        );
+        notifiedRef.current.energy = true;
+      }
+    } else if (energy >= 40) {
+      notifiedRef.current.energy = false;
+    }
+
+    // B. Check partner activity
+    if (notifiedRef.current.lastTimestamp && notifiedRef.current.lastTimestamp !== state.timestamp) {
+      if (state.active_user !== activeUser) {
+        // Partner performed an action!
+        const partnerKey = state.active_user === "User_A" ? "user_a" : "user_b";
+        const partnerName = state.users[partnerKey]?.name || "Your partner";
+        const lastAction = state.users[partnerKey]?.last_action || "updated Orbit";
+        
+        sendNotification(
+          "💖 Partner Activity!",
+          `${partnerName} just: ${lastAction}!`
+        );
+      }
+    }
+    notifiedRef.current.lastTimestamp = state.timestamp;
+  }, [state.tamagotchi, state.timestamp, state.active_user, activeUser]);
+
+  // 4. Local active depletion interval
+  useEffect(() => {
+    if (!roomCode || !state.tamagotchi) return;
+
+    const interval = setInterval(() => {
+      const { updated, tamagotchi: depletedTamagotchi } = applyDepletion(state.tamagotchi);
+      if (updated) {
+        const updatedState = {
+          ...state,
+          tamagotchi: depletedTamagotchi,
+        };
+        syncStateUpdate(updatedState);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [roomCode, state.tamagotchi]);
 
   // Save user room mapping helper
   const linkUserToRoom = async (code: string) => {
