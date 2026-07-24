@@ -1,45 +1,26 @@
-"name": "WebFlow Install",
-
-"short_name": "WebFlow",
-
-"description": "WebFlow Install",
-
-"start url": "/"
-
-"scope": "/",
-
-"display": "standalone",
-
-"orientation": "portrait",
-
-"background_color": "#0f0f1a",
-
-"theme_color": "#4F46E5",
-
-"categories": ["productivity", "utilities"],
-
-"icons": [
-
 {
-
-{
-
-"src": "/icon-512.png",
-
-"sizes": "512x512",
-
-"type": "image/png",
-
-"purpose": "any"
-
-"src": "/icon-512-maskable.png",
-
-"sizes": "512x512",
-
-"type": "image/png",
-
-"purpose": "maskable"
-
+  "name": "Orbit — Couple's Companion",
+  "short_name": "Orbit",
+  "description": "Orbit — Couple's Companion",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f1a",
+  "theme_color": "#ec4899",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }
-
-1
