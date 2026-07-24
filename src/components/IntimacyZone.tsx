@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { EncryptedIntimacyItem, UserRole } from "../types";
 import { Lock, Eye, Plus, CheckCircle2, Sparkles, X, ShieldCheck, Upload, Image, MessageSquare, Heart } from "lucide-react";
-import { compressImageDataUrl } from "../lib/firebase";
 
 interface IntimacyZoneProps {
   items: EncryptedIntimacyItem[];
@@ -23,7 +22,6 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
   const [secretMessage, setSecretMessage] = useState("");
   const [customPhotoInput, setCustomPhotoInput] = useState("");
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [viewingItem, setViewingItem] = useState<EncryptedIntimacyItem | null>(null);
 
   const handlePhoneFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,21 +35,11 @@ export const IntimacyZone: React.FC<IntimacyZoneProps> = ({
     }
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    let finalImage = customPhotoInput.trim() || "";
-    if (uploadedFilePreview) {
-      setIsUploading(true);
-      try {
-        finalImage = await compressImageDataUrl(uploadedFilePreview);
-      } catch (err) {
-        console.error("Error compressing image:", err);
-      } finally {
-        setIsUploading(false);
-      }
-    }
+    const finalImage = uploadedFilePreview || customPhotoInput.trim() || "";
 
     onAddIntimacyItem(newTitle.trim(), secretMessage.trim(), finalImage);
     setNewTitle("");
