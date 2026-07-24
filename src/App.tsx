@@ -745,15 +745,18 @@ export default function App() {
 
       {/* Main Content Area - Responsive padding bottom for Clash Royale Navigation Dock */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6 pb-28 sm:pb-32">
-        {/* Tab 1: Partner Tab (Countdown + Custom Target Date Configurator + Partner Status) */}
+        {/* Tab 1: Partner Tab (Countdown + Custom Target Date Configurator + Partner Status + Live Map) */}
         {activeTab === "partner" && (
           <PartnerTab
+            state={state}
             countdown={state.countdown}
             userA={state.users.user_a}
             userB={state.users.user_b}
             activeUser={activeUser}
             onUpdateTargetDate={handleUpdateTargetDate}
             onSetMood={handleSetMood}
+            onUpdateLocation={handleUpdateLocation}
+            onSendPing={handleSendLocationPing}
             isLoading={isLoading}
           />
         )}

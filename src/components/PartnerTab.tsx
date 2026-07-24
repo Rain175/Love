@@ -1,24 +1,31 @@
 import React, { useState } from "react";
-import { CountdownState, UserProfile, UserRole } from "../types";
-import { Calendar, Sparkles, Heart, Edit3, X, Check, Users, Clock, Flame, Smile, ShieldCheck } from "lucide-react";
+import { CountdownState, UserProfile, UserRole, OrbitState, UserLocation } from "../types";
+import { Calendar, Sparkles, Heart, Edit3, X, Check, Users, Clock, Flame, Smile, ShieldCheck, MapPin } from "lucide-react";
+import { CoupleMap } from "./CoupleMap";
 
 interface PartnerTabProps {
+  state: OrbitState;
   countdown: CountdownState;
   userA: UserProfile;
   userB: UserProfile;
   activeUser: UserRole;
   onUpdateTargetDate: (newTargetDateStr: string) => void;
   onSetMood: (mood: string, customStatus?: string) => void;
+  onUpdateLocation: (data: Partial<UserLocation>) => void;
+  onSendPing: () => void;
   isLoading: boolean;
 }
 
 export const PartnerTab: React.FC<PartnerTabProps> = ({
+  state,
   countdown,
   userA,
   userB,
   activeUser,
   onUpdateTargetDate,
   onSetMood,
+  onUpdateLocation,
+  onSendPing,
   isLoading,
 }) => {
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -358,12 +365,32 @@ export const PartnerTab: React.FC<PartnerTabProps> = ({
                 type="button"
                 onClick={() => onSetMood(m)}
                 disabled={isLoading}
-                className="px-3 py-1.5 bg-white/5 hover:bg-pink-500/20 text-xs text-slate-200 rounded-xl border border-white/10 hover:border-pink-500/40 transition-all active:scale-95"
+                className="px-3 py-1.5 bg-white/5 hover:bg-pink-500/20 text-xs text-slate-200 rounded-xl border border-white/10 hover:border-pink-500/40 transition-all active:scale-95 cursor-pointer"
               >
                 {m}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Live Couple Map Directly Under Moods */}
+        <div className="pt-4 border-t border-white/10 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <MapPin className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg text-white">Live Couple Map & Distance Tracker</h3>
+              <p className="text-xs text-slate-300">See each other's live location, distance apart, and time zone difference</p>
+            </div>
+          </div>
+
+          <CoupleMap
+            state={state}
+            activeUser={activeUser}
+            onUpdateLocation={onUpdateLocation}
+            onSendPing={onSendPing}
+          />
         </div>
       </div>
     </div>
